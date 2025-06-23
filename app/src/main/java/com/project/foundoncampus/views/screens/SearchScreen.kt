@@ -1,12 +1,9 @@
-package com.project.foundoncampus.ui.screens
+package com.project.foundoncampus.views.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,25 +41,6 @@ fun SearchScreen(navController: NavController) {
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Hey, User", fontSize = 16.sp) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Blue,
-                    titleContentColor = Color.White
-                ),
-                navigationIcon = {
-                    IconButton(onClick = { /* profile */ }) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* settings */ }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
-            )
-        }
     ) { innerPadding ->
         Column(
             modifier = Modifier

@@ -1,4 +1,4 @@
-package com.project.foundoncampus.ui.theme
+package com.project.foundoncampus.views.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

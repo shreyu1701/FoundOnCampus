@@ -1,4 +1,4 @@
-package com.project.foundoncampus.ui.components
+package com.project.foundoncampus.views.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
