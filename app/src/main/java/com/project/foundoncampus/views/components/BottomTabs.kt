@@ -18,7 +18,7 @@ val bottomTabs = listOf(
     BottomTabItem(Route.Home, Icons.Default.Home, "Home"),
     BottomTabItem(Route.Search, Icons.Default.Search, "Search"),
     BottomTabItem(Route.Create, Icons.Default.Add, "Create"),
-    BottomTabItem(Route.History, Icons.Default.Info, "History"),
+    BottomTabItem(Route.History, Icons.Default.Menu, "History"),
     BottomTabItem(Route.Profile, Icons.Default.Person, "Profile"),
 )
 
