@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.project.foundoncampus.model.ListingItem
+import com.project.foundoncampus.utils.FileUtils.saveItem
 import com.project.foundoncampus.viewmodels.CreateViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,25 +71,25 @@ fun CreateScreen(navController: NavController, viewModel: CreateViewModel = view
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(topBarTitle, lineHeight = 16.sp, fontSize = 16.sp) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Blue,
-                    titleContentColor = Color.White
-                ),
-                navigationIcon = {
-                    IconButton(onClick = { /* profile */ }) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* settings */ }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
-            )
-        }
+//        topBar = {
+//            TopAppBar(
+//                title = { Text(topBarTitle, lineHeight = 16.sp, fontSize = 16.sp) },
+//                colors = TopAppBarDefaults.topAppBarColors(
+//                    containerColor = Color.Blue,
+//                    titleContentColor = Color.White
+//                ),
+//                navigationIcon = {
+//                    IconButton(onClick = { /* profile */ }) {
+//                        Icon(Icons.Default.Person, contentDescription = "Profile")
+//                    }
+//                },
+//                actions = {
+//                    IconButton(onClick = { /* settings */ }) {
+//                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+//                    }
+//                }
+//            )
+//        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -204,6 +205,8 @@ fun CreateScreen(navController: NavController, viewModel: CreateViewModel = view
                                     uploadPhotoUri = uploadPhotoUri
                                 )
                                 viewModel.saveListing(listing)
+
+                                //data store in DB.
                                 Toast.makeText(context, "Listing saved!", Toast.LENGTH_SHORT).show()
                                 item = ""
                                 category = ""
@@ -267,7 +270,7 @@ fun CustomDropdown(
                 onValueChange = {},
                 readOnly = true,
                 modifier = Modifier
-                    .menuAnchor()
+                    .menuAnchor(MenuAnchorType.PrimaryEditable)
                     .fillMaxWidth()
                     .height(56.dp),
                 trailingIcon = {
