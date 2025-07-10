@@ -5,7 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.navigation.NavController
+import com.project.foundoncampus.nav.Route
 import com.project.foundoncampus.views.screens.MainScreen
+import com.project.foundoncampus.views.screens.SignUpScreen
 import com.project.foundoncampus.views.theme.FoundOnCampusTheme
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -40,7 +40,7 @@ fun MainScreen() {
     ) {
         NavGraph(
             navController = navController,
-            startDestination = Route.Home.routeName
+            startDestination = Route.SignUp.routeName
         )
     }
 }
