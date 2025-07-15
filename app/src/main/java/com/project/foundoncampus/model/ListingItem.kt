@@ -1,7 +1,5 @@
 package com.project.foundoncampus.model
 
-import java.time.LocalDate
-
 data class ListingItem(
     val type: String, // "Lost" or "Found"
     val item: String,

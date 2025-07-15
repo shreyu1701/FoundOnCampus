@@ -2,6 +2,8 @@ package com.project.foundoncampus.nav
 
 sealed class Route(val routeName: String) {
 
+    object SignUp : Route("sign_up")
+    object SignIn : Route("sign_in")
     object Home : Route("home")
     object Search : Route("search")
     object Create : Route("create")
