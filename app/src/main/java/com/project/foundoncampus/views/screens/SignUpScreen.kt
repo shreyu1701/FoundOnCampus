@@ -124,7 +124,7 @@ fun SignUpScreen(navController: NavController) {
                                     val newUser = User(name, humberId, phoneNumber, email, password)
                                     FileUtils.saveUser(context, newUser)
                                     Toast.makeText(context, "Registered successfully!", Toast.LENGTH_SHORT).show()
-                                    navController.navigate(Route.Home.routeName)
+                                    navController.navigate(Route.SignIn.routeName)
                                 }
                             } else {
                                 Toast.makeText(context, "Please fill the data", Toast.LENGTH_LONG).show()
