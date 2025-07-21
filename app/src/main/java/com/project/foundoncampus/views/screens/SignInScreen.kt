@@ -136,6 +136,17 @@ fun SignInScreen(navController: NavController) {
                     ) {
                         Text("Submit")
                     }
+
+                    TextButton(
+                        onClick = {
+                            navController.navigate(Route.SignUp.routeName) {}
+                        }
+                    ) {
+                        Text(
+                            "Don't Have An Account?"
+                        )
+                    }
+
                 }
             }
         }
