@@ -51,8 +51,6 @@ fun ProfileScreen(navController: NavHostController){
     )
 }
 
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileContent(
