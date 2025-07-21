@@ -11,6 +11,7 @@ import com.project.foundoncampus.views.screens.HomeScreen
 import com.project.foundoncampus.views.screens.SearchScreen
 import com.project.foundoncampus.views.screens.CreateScreen
 import com.project.foundoncampus.views.screens.HistoryScreen
+import com.project.foundoncampus.views.screens.MyListingScreen
 import com.project.foundoncampus.views.screens.ProfileScreen
 import com.project.foundoncampus.views.screens.SignInScreen
 
@@ -39,6 +40,7 @@ fun NavGraph(navController: NavHostController, startDestination: String = Route.
             composable(Route.Create.routeName) { CreateScreen(navController) }
             composable(Route.History.routeName) { HistoryScreen(navController) }
             composable(Route.Profile.routeName) { ProfileScreen(navController) }
+            composable(Route.MyListing.routeName) { MyListingScreen(navController) }
         }
     }
 }
