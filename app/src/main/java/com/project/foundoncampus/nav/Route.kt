@@ -9,4 +9,11 @@ sealed class Route(val routeName: String) {
     object Create : Route("create")
     object History : Route("history")
     object Profile : Route("profile")
+<<<<<<< Updated upstream
+=======
+    object MyListing : Route("my_listing")
+    object RecentLost : Route("recentlost")
+    object RecentClaimed : Route("recentclaimed")
+    object RecentFound : Route("recentfound")
+>>>>>>> Stashed changes
 }

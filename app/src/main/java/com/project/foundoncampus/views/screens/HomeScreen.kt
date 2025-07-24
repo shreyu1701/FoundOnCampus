@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.project.foundoncampus.R
+import com.project.foundoncampus.nav.Route
 
 
 @Composable
@@ -81,7 +82,7 @@ fun HomeScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState())
         ) {
             //  Recent Lost
-            SectionHeader("Recent Lost") { /* see all */ }
+            SectionHeader("Recent Lost") { navController.navigate(Route.RecentLost.routeName) }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -97,7 +98,7 @@ fun HomeScreen(navController: NavController) {
             Spacer(Modifier.height(24.dp))
 
             //  Recent Found
-            SectionHeader("Recent Found") { /* see all */ }
+            SectionHeader("Recent Found") { navController.navigate(Route.RecentFound.routeName)  }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -113,7 +114,7 @@ fun HomeScreen(navController: NavController) {
             Spacer(Modifier.height(24.dp))
 
             //  Recent Claimed
-            SectionHeader("Recent Claimed") { /* see all */ }
+            SectionHeader("Recent Claimed") { navController.navigate(Route.RecentClaimed.routeName) }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
