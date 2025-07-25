@@ -1,6 +1,5 @@
 package com.project.foundoncampus.views.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,11 +32,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
+import com.project.foundoncampus.nav.Route
 
 
 @Composable
 fun ProfileScreen(navController: NavHostController){
     ProfileContent(
+        navController = navController,
         profilePictureUrl = "https://www.kindpng.com/picc/m/252-2524695_dummy-profile-image-jpg-hd-png-download.png",
         fullName = "John Doe",
         email = "john.doe@example.com",
@@ -51,11 +52,10 @@ fun ProfileScreen(navController: NavHostController){
     )
 }
 
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileContent(
+                  navController: NavHostController,
                   profilePictureUrl: String,
                   fullName: String,
                   email: String,
@@ -105,27 +105,26 @@ fun ProfileContent(
             // Account
             Column {
                     AccountItem(Icons.Filled.Person, label = "Profile Details", onClick = {
-                        Toast.makeText(context, "Click on Profile Details", Toast.LENGTH_SHORT).show()
+                        //nav to ProfileDetails.kt
                     })
                     Spacer(modifier = Modifier.height(16.dp))
 
                     AccountItem(Icons.Filled.Menu, label = "My Listing", onClick = {
-                        Toast.makeText(context, "Click on My Listing", Toast.LENGTH_SHORT).show()
+                        navController.navigate(Route.MyListing.routeName)
                     })
                     Spacer(modifier = Modifier.height(16.dp))
 
                     AccountItem(Icons.Filled.AccountBox, label = "Account Details", onClick = {
-                        Toast.makeText(context, "Click on Account Details", Toast.LENGTH_SHORT).show()
+                        //nav to AccountDetails.kt
                     })
                     Spacer(modifier = Modifier.height(16.dp))
 
                     AccountItem(Icons.AutoMirrored.Filled.ExitToApp, label = "Logout", onClick = {
-                        Toast.makeText(context, "Click on Logout", Toast.LENGTH_SHORT).show()
+                       //nav to SignInScreen.kt
                     })
             }
 
             Spacer(modifier = Modifier.weight(1f))
-
             // Logout
             Button(
                 onClick = onLogoutClick,
@@ -164,19 +163,3 @@ fun AccountItem(icon: ImageVector, label: String, onClick: () -> Unit) {
 
 }
 
-@Preview(showBackground = true)
-@Composable
-fun ProfileContentPreview() {
-    ProfileContent(
-        profilePictureUrl = "https://www.kindpng.com/picc/m/252-2524695_dummy-profile-image-jpg-hd-png-download.png",
-        fullName = "John Doe",
-        email = "john.doe@example.com",
-        contactNumber = "+1 234 567 890",
-        claimedCount = 5,
-        foundedCount = 3,
-        reportedCount = 2,
-        onChangeEmailClick = {},
-        onChangePasswordClick = {},
-        onLogoutClick = {}
-    )
-}

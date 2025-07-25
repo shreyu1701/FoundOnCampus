@@ -11,37 +11,48 @@ import com.project.foundoncampus.nav.NavGraph
 import com.project.foundoncampus.nav.Route
 import com.project.foundoncampus.views.components.BottomTabsBar
 
+
+private val bottomNavRoutes = listOf(
+    Route.Home.routeName,
+    Route.Search.routeName,
+    Route.Create.routeName,
+    Route.History.routeName,
+    Route.Profile.routeName
+)
+
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
-
-    // To observe and highlight the selected tab
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route ?: Route.Home.routeName
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val showBottomBar = currentRoute in bottomNavRoutes
 
     Scaffold(
         bottomBar = {
-            BottomTabsBar(
-                selectedRoute = currentRoute,
-                onTabSelected = { route ->
-                    if (currentRoute != route.routeName) {
-                        navController.navigate(route.routeName) {
-                            // Avoid building up a large backstack of the same destination
-                            popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+            if (showBottomBar) {
+                BottomTabsBar(
+                    selectedRoute = currentRoute ?: Route.Home.routeName,
+                    onTabSelected = { route ->
+                        if (currentRoute != route.routeName) {
+                            navController.navigate(route.routeName) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
                     }
-                }
-            )
+                )
+            }
         }
     ) {
         NavGraph(
             navController = navController,
-            startDestination = Route.SignUp.routeName
+            startDestination = Route.Auth.routeName
         )
     }
 }
+
