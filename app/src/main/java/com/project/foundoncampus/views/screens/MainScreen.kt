@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.material3.Scaffold
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.google.android.gms.auth.api.Auth
 import com.project.foundoncampus.nav.NavGraph
 import com.project.foundoncampus.nav.Route
 import com.project.foundoncampus.views.components.BottomTabsBar

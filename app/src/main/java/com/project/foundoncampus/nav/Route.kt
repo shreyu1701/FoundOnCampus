@@ -16,4 +16,7 @@ sealed class Route(val routeName: String) {
     object History : Route("history")
     object Profile : Route("profile")
     object MyListing : Route("my_listing")
+    object RecentLost : Route("recentlost")
+    object RecentClaimed : Route("recentclaimed")
+    object RecentFound : Route("recentfound")
 }
