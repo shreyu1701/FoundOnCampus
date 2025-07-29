@@ -2,16 +2,20 @@ package com.project.foundoncampus.views.screens
 
 import android.annotation.SuppressLint
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.google.android.gms.auth.api.Auth
 import com.project.foundoncampus.nav.NavGraph
 import com.project.foundoncampus.nav.Route
 import com.project.foundoncampus.util.SessionManager
 import com.project.foundoncampus.views.components.BottomTabsBar
-import kotlinx.coroutines.launch
 
 private val bottomNavRoutes = listOf(
     Route.Home.routeName,

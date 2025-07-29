@@ -18,10 +18,9 @@ sealed class Route(val routeName: String) {
     object RecentLost : Route("recentlost")
     object RecentClaimed : Route("recentclaimed")
     object RecentFound : Route("recentfound")
-}
-
-    // Profile Screen with dynamic route argument (email)
     object Profile : Route("profile/{userEmail}") {
         fun createRoute(userEmail: String): String = "profile/$userEmail"
     }
+}
+
 

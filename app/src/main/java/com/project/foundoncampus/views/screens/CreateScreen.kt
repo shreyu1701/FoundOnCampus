@@ -5,29 +5,54 @@ package com.project.foundoncampus.views.screens
 import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.project.foundoncampus.BuildConfig
 import com.project.foundoncampus.model.AppDatabase
 import com.project.foundoncampus.model.ListingEntity
 import com.project.foundoncampus.util.GmailSender
 import com.project.foundoncampus.util.SessionManager
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -57,6 +82,8 @@ fun CreateScreen(navController: NavController) {
         calendar.get(java.util.Calendar.MONTH),
         calendar.get(java.util.Calendar.DAY_OF_MONTH)
     )
+
+    var isSending by remember { mutableStateOf(false) }
 
     Scaffold { padding ->
         Column(
@@ -136,7 +163,6 @@ fun CreateScreen(navController: NavController) {
                         )
                     }
 
-                    var isSending by remember { mutableStateOf(false) }
 
                     Button(
                         onClick = {
@@ -159,26 +185,46 @@ fun CreateScreen(navController: NavController) {
                                     db.listingDao().insertListing(listing)
 
                                     withContext(Dispatchers.IO) {
-                                        val senderEmail = "lostandfoundhumber@gmail.com"
-                                        val appPassword = "fzvn onds jnnf idt"
-                                        val subject = "New Item Added"
-                                        val body = "A new item titled \"$item\" was reported as $selectedType on $date."
+                                        try {
+                                            val senderEmail = BuildConfig.EMAIL_USER
+                                            val appPassword = BuildConfig.EMAIL_PASS
+                                            val subject = "New Item Added"
+                                            val body =
+                                                "A new item titled \"$item\" was reported as $selectedType on $date."
 
-                                        val success = GmailSender(senderEmail, appPassword).sendEmail(
-                                            to = email,
-                                            subject = subject,
-                                            body = body
-                                        )
+                                            val success =
+                                                GmailSender(senderEmail, appPassword).sendEmail(
+                                                    to = email,
+                                                    subject = subject,
+                                                    body = body
+                                                )
 
-                                        withContext(Dispatchers.Main) {
-                                            isSending = false
-                                            if (success) {
-                                                Toast.makeText(context, "Listing saved & Email sent!", Toast.LENGTH_SHORT).show()
-                                            } else {
-                                                Toast.makeText(context, "Listing saved, but email failed!", Toast.LENGTH_SHORT).show()
+                                            withContext(Dispatchers.Main) {
+                                                isSending = false
+                                                if (success) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Listing saved & Email sent!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Listing saved, but email failed!",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        }
+                                        catch (e: Exception) {
+                                            e.printStackTrace()
+                                            withContext(Dispatchers.Main) {
+                                                isSending = false
+                                                Toast.makeText(context, "Listing saved, but email crashed!", Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     }
+
 
                                     item = ""
                                     category = ""

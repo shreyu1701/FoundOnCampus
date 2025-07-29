@@ -44,7 +44,6 @@ fun NavGraph(navController: NavHostController, startDestination: String = Route.
             composable(Route.Search.routeName) { SearchScreen(navController) }
             composable(Route.Create.routeName) { CreateScreen(navController) }
             composable(Route.History.routeName) { HistoryScreen(navController) }
-            composable(Route.Profile.routeName) { ProfileScreen(navController) }
             composable(Route.MyListing.routeName) { MyListingScreen(navController) }
 
             composable(Route.RecentLost.routeName) { RecentLostScreen(navController) }
