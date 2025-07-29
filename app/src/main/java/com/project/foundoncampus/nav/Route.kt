@@ -14,9 +14,14 @@ sealed class Route(val routeName: String) {
     object Search : Route("search")
     object Create : Route("create")
     object History : Route("history")
-    object Profile : Route("profile")
     object MyListing : Route("my_listing")
     object RecentLost : Route("recentlost")
     object RecentClaimed : Route("recentclaimed")
     object RecentFound : Route("recentfound")
 }
+
+    // Profile Screen with dynamic route argument (email)
+    object Profile : Route("profile/{userEmail}") {
+        fun createRoute(userEmail: String): String = "profile/$userEmail"
+    }
+

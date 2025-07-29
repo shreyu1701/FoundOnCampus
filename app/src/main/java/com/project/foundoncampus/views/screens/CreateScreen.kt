@@ -11,9 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,22 +18,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.project.foundoncampus.model.ListingItem
-import com.project.foundoncampus.utils.FileUtils.saveItem
-import com.project.foundoncampus.viewmodels.CreateViewModel
+import com.project.foundoncampus.model.AppDatabase
+import com.project.foundoncampus.model.ListingEntity
+import com.project.foundoncampus.util.GmailSender
+import com.project.foundoncampus.util.SessionManager
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateScreen(navController: NavController, viewModel: CreateViewModel = viewModel()) {
+fun CreateScreen(navController: NavController) {
     val context = LocalContext.current
+    val db = AppDatabase.getInstance(context)
+    val scope = rememberCoroutineScope()
+    val sessionManager = remember { SessionManager(context) }
 
-    // Form state
     var selectedType by remember { mutableStateOf("Lost") }
     var item by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
@@ -44,16 +44,10 @@ fun CreateScreen(navController: NavController, viewModel: CreateViewModel = view
     var location by remember { mutableStateOf("") }
     var date by remember { mutableStateOf("") }
     var itemDescription by remember { mutableStateOf("") }
-    var uploadPhotoUri by remember { mutableStateOf("") }
 
-    // Options
     val categoryOptions = listOf("Electronics", "Clothing", "Books", "Accessories")
     val campusOptions = listOf("IGS Campus", "North Campus", "Lakeshore Campus")
     val locationOptions = listOf("Library", "Cafeteria", "Auditorium", "Hostel")
-
-    var categoryExpanded by remember { mutableStateOf(false) }
-    var campusExpanded by remember { mutableStateOf(false) }
-    var locationExpanded by remember { mutableStateOf(false) }
 
     val calendar = java.util.Calendar.getInstance()
     val datePickerDialog = DatePickerDialog(
@@ -64,33 +58,7 @@ fun CreateScreen(navController: NavController, viewModel: CreateViewModel = view
         calendar.get(java.util.Calendar.DAY_OF_MONTH)
     )
 
-    val topBarTitle = if (selectedType == "Lost") {
-        "Hey,User\nLost something? We're here to help!"
-    } else {
-        "Hey,User\nFound something? Thanks for reporting!"
-    }
-
-    Scaffold(
-//        topBar = {
-//            TopAppBar(
-//                title = { Text(topBarTitle, lineHeight = 16.sp, fontSize = 16.sp) },
-//                colors = TopAppBarDefaults.topAppBarColors(
-//                    containerColor = Color.Blue,
-//                    titleContentColor = Color.White
-//                ),
-//                navigationIcon = {
-//                    IconButton(onClick = { /* profile */ }) {
-//                        Icon(Icons.Default.Person, contentDescription = "Profile")
-//                    }
-//                },
-//                actions = {
-//                    IconButton(onClick = { /* settings */ }) {
-//                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-//                    }
-//                }
-//            )
-//        }
-    ) { padding ->
+    Scaffold { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
@@ -108,18 +76,11 @@ fun CreateScreen(navController: NavController, viewModel: CreateViewModel = view
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
+                        .padding(16.dp)
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "Report Item",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp
-                        ),
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    )
+                    Text("Report Item", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Report:", fontWeight = FontWeight.Bold, modifier = Modifier.width(100.dp))
@@ -129,33 +90,23 @@ fun CreateScreen(navController: NavController, viewModel: CreateViewModel = view
                         Text("Found")
                     }
 
-                    CustomField(label = "Item:", value = item) { item = it }
+                    CustomDropdown(label = "Category", options = categoryOptions, selectedOption = category) {
+                        category = it
+                    }
 
-                    CustomDropdown(
-                        label = "Category:",
-                        options = categoryOptions,
-                        selected = category,
-                        expanded = categoryExpanded,
-                        onExpand = { categoryExpanded = it },
-                        onSelected = { category = it }
-                    )
+                    CustomDropdown(label = "Campus", options = campusOptions, selectedOption = campus) {
+                        campus = it
+                    }
 
-                    CustomDropdown(
-                        label = "Campus:",
-                        options = campusOptions,
-                        selected = campus,
-                        expanded = campusExpanded,
-                        onExpand = { campusExpanded = it },
-                        onSelected = { campus = it }
-                    )
+                    CustomDropdown(label = "Location", options = locationOptions, selectedOption = location) {
+                        location = it
+                    }
 
-                    CustomDropdown(
-                        label = "Location:",
-                        options = locationOptions,
-                        selected = location,
-                        expanded = locationExpanded,
-                        onExpand = { locationExpanded = it },
-                        onSelected = { location = it }
+                    OutlinedTextField(
+                        value = item,
+                        onValueChange = { item = it },
+                        label = { Text("Item") },
+                        modifier = Modifier.fillMaxWidth()
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -164,9 +115,7 @@ fun CreateScreen(navController: NavController, viewModel: CreateViewModel = view
                             value = date,
                             onValueChange = {},
                             readOnly = true,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             trailingIcon = {
                                 IconButton(onClick = { datePickerDialog.show() }) {
                                     Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
@@ -187,66 +136,71 @@ fun CreateScreen(navController: NavController, viewModel: CreateViewModel = view
                         )
                     }
 
-                    CustomField(label = "Photo:", value = uploadPhotoUri, trailingIcon = {
-                        Icon(Icons.Default.Upload, contentDescription = "Upload")
-                    }) { uploadPhotoUri = it }
+                    var isSending by remember { mutableStateOf(false) }
 
                     Button(
                         onClick = {
-                            if (item.isNotBlank()) {
-                                val listing = ListingItem(
-                                    type = selectedType,
-                                    item = item,
-                                    category = category,
-                                    campus = campus,
-                                    location = location,
-                                    date = date,
-                                    itemdescription = itemDescription,
-                                    uploadPhotoUri = uploadPhotoUri
-                                )
-                                viewModel.saveListing(listing)
+                            if (item.isNotBlank() && !isSending) {
+                                isSending = true
+                                scope.launch {
+                                    val email = sessionManager.getUserEmail().first() ?: ""
 
-                                //data store in DB.
-                                Toast.makeText(context, "Listing saved!", Toast.LENGTH_SHORT).show()
-                                item = ""
-                                category = ""
-                                campus = ""
-                                location = ""
-                                date = ""
-                                itemDescription = ""
-                                uploadPhotoUri = ""
-                                selectedType = "Lost"
-                            } else {
+                                    val listing = ListingEntity(
+                                        title = item,
+                                        description = itemDescription,
+                                        category = category,
+                                        type = selectedType,
+                                        date = date,
+                                        status = "Pending",
+                                        contact = email,
+                                        userEmail = email
+                                    )
+
+                                    db.listingDao().insertListing(listing)
+
+                                    withContext(Dispatchers.IO) {
+                                        val senderEmail = "lostandfoundhumber@gmail.com"
+                                        val appPassword = "fzvn onds jnnf idt"
+                                        val subject = "New Item Added"
+                                        val body = "A new item titled \"$item\" was reported as $selectedType on $date."
+
+                                        val success = GmailSender(senderEmail, appPassword).sendEmail(
+                                            to = email,
+                                            subject = subject,
+                                            body = body
+                                        )
+
+                                        withContext(Dispatchers.Main) {
+                                            isSending = false
+                                            if (success) {
+                                                Toast.makeText(context, "Listing saved & Email sent!", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(context, "Listing saved, but email failed!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }
+
+                                    item = ""
+                                    category = ""
+                                    campus = ""
+                                    location = ""
+                                    date = ""
+                                    itemDescription = ""
+                                    selectedType = "Lost"
+                                }
+                            } else if (item.isBlank()) {
                                 Toast.makeText(context, "Please fill in the item name.", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSending
                     ) {
-                        Text("Submit")
+                        Text(if (isSending) "Submitting..." else "Submit")
                     }
+
                 }
             }
         }
-    }
-}
-
-@Composable
-fun CustomField(
-    label: String,
-    value: String,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    onValueChange: (String) -> Unit
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontWeight = FontWeight.Bold, modifier = Modifier.width(100.dp))
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            trailingIcon = trailingIcon
-        )
     }
 }
 
@@ -254,51 +208,39 @@ fun CustomField(
 fun CustomDropdown(
     label: String,
     options: List<String>,
-    selected: String,
-    expanded: Boolean,
-    onExpand: (Boolean) -> Unit,
-    onSelected: (String) -> Unit
+    selectedOption: String,
+    onOptionSelected: (String) -> Unit
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontWeight = FontWeight.Bold, modifier = Modifier.width(100.dp))
-        ExposedDropdownMenuBox(
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = selectedOption,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor()
+        )
+        ExposedDropdownMenu(
             expanded = expanded,
-            onExpandedChange = { onExpand(!expanded) }
+            onDismissRequest = { expanded = false }
         ) {
-            OutlinedTextField(
-                value = selected,
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier
-                    .menuAnchor(MenuAnchorType.PrimaryEditable)
-                    .fillMaxWidth()
-                    .height(56.dp),
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                placeholder = { Text("Select") }
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { onExpand(false) }
-            ) {
-                options.forEach {
-                    DropdownMenuItem(
-                        text = { Text(it) },
-                        onClick = {
-                            onSelected(it)
-                            onExpand(false)
-                        }
-                    )
-                }
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    }
+                )
             }
         }
     }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun CreateScreenPreview() {
-    val navController = rememberNavController()
-    CreateScreen(navController = navController)
 }

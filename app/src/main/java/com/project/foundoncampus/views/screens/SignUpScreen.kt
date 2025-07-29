@@ -1,5 +1,6 @@
 package com.project.foundoncampus.views.screens
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,14 +20,23 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.project.foundoncampus.model.User
+import com.project.foundoncampus.model.AppDatabase
+import com.project.foundoncampus.model.UserEntity
 import com.project.foundoncampus.nav.Route
-import com.project.foundoncampus.utils.FileUtils
+import com.project.foundoncampus.util.GmailSender
+import kotlinx.coroutines.launch
+import com.project.foundoncampus.BuildConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import javax.mail.MessagingException
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(navController: NavController) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val db = AppDatabase.getInstance(context)
 
     var name by remember { mutableStateOf("") }
     var humberId by remember { mutableStateOf("") }
@@ -44,9 +54,7 @@ fun SignUpScreen(navController: NavController) {
     var passwordError by remember { mutableStateOf(false) }
     var confirmPasswordError by remember { mutableStateOf(false) }
 
-    Scaffold(
-
-    ) { padding ->
+    Scaffold { padding ->
         Box(
             modifier = Modifier
                 .padding(padding)
@@ -68,8 +76,8 @@ fun SignUpScreen(navController: NavController) {
                     Text("Sign Up", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
 
                     LabeledTextField("Name:", name, { name = it }, nameError, "Name is required")
-                    LabeledTextField("Humber ID:", humberId, { humberId = it }, humberIdError,"Humber ID must start with n or N and have 8 digits")
-                    LabeledTextField("Phone Number:", phoneNumber, { phoneNumber = it }, phoneNumberError,"Phone number must be exactly 10 digits" )
+                    LabeledTextField("Humber ID:", humberId, { humberId = it }, humberIdError, "Humber ID must start with n or N and have 8 digits")
+                    LabeledTextField("Phone Number:", phoneNumber, { phoneNumber = it }, phoneNumberError, "Phone number must be exactly 10 digits")
                     LabeledTextField("Humber Email ID:", email, { email = it }, emailError, "Email must be your Humber ID + @humber.ca")
 
                     PasswordField(
@@ -79,7 +87,7 @@ fun SignUpScreen(navController: NavController) {
                         onValueChange = { password = it },
                         onVisibilityToggle = { passwordVisible = !passwordVisible },
                         isError = passwordError,
-                        "Password must have 1 capital, 1 special, 1 number, min 8 chars"
+                        errorMessage = "Password must have 1 capital, 1 special, 1 number, min 8 chars"
                     )
 
                     PasswordField(
@@ -89,12 +97,11 @@ fun SignUpScreen(navController: NavController) {
                         onValueChange = { confirmPassword = it },
                         onVisibilityToggle = { confirmPasswordVisible = !confirmPasswordVisible },
                         isError = confirmPasswordError,
-                        "Passwords do not match"
+                        errorMessage = "Passwords do not match"
                     )
 
                     Button(
                         onClick = {
-                            // Reset error states
                             nameError = name.isBlank()
                             humberIdError = !humberId.matches(Regex("^[nN]\\d{8}$"))
                             phoneNumberError = !phoneNumber.matches(Regex("^\\d{10}$"))
@@ -105,18 +112,57 @@ fun SignUpScreen(navController: NavController) {
                             if (!nameError && !humberIdError && !phoneNumberError &&
                                 !emailError && !passwordError && !confirmPasswordError
                             ) {
-                                val existingUsers = FileUtils.loadUsers(context)
-                                val alreadyExists = existingUsers.any {
-                                    it.email.equals(email, ignoreCase = true)
-                                }
+                                scope.launch {
+                                    val existing = db.userDao().getUserByEmail(email)
+                                    if (existing != null) {
+                                        Toast.makeText(context, "This email is already registered", Toast.LENGTH_LONG).show()
+                                    } else {
+                                        val newUser = UserEntity(
+                                            email = email,
+                                            name = name,
+                                            password = password,
+                                            phone = phoneNumber
+                                        )
+                                        db.userDao().insertUser(newUser)
 
-                                if (alreadyExists) {
-                                    Toast.makeText(context, "This email is already registered", Toast.LENGTH_LONG).show()
-                                } else {
-                                    val newUser = User(name, humberId, phoneNumber, email, password)
-                                    FileUtils.saveUser(context, newUser)
-                                    Toast.makeText(context, "Registered successfully!", Toast.LENGTH_SHORT).show()
-                                    navController.navigate(Route.SignIn.routeName)
+                                        try {
+                                            val sender = GmailSender(
+                                                user = BuildConfig.EMAIL_USER,
+                                                password = BuildConfig.EMAIL_PASS
+                                            )
+
+                                            withContext(Dispatchers.IO) {
+                                                val sent = sender.sendEmail(
+                                                    to = email,
+                                                    subject = "Welcome to FoundOnCampus!",
+                                                    body = """
+                                                        Hi $name,
+
+                                                        Thank you for registering at FoundOnCampus.
+
+                                                        You can now sign in using your Humber ID.
+
+                                                        — FoundOnCampus Team
+                                                """.trimIndent()
+                                                )
+
+                                                withContext(Dispatchers.Main) {
+                                                    if (sent) {
+                                                        Toast.makeText(context, "Registered", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        catch (e: MessagingException) {
+                                            println("Email sending failed: ${e.message}")
+                                            e.printStackTrace()
+                                            false
+                                        }
+
+//                                        Toast.makeText(context, "Registered successfully!", Toast.LENGTH_SHORT).show()
+                                        navController.navigate(Route.SignIn.routeName)
+
+                                    }
                                 }
                             } else {
                                 Toast.makeText(context, "Please fill the data", Toast.LENGTH_LONG).show()

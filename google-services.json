@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "13251492444",
+    "project_id": "foundoncampus",
+    "storage_bucket": "foundoncampus.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:13251492444:android:11df34f391dd1a64bc0499",
+        "android_client_info": {
+          "package_name": "com.project.foundoncampus"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD3IoPPFPwztCI0DgI9XVKoIWLrDj0DNZ8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

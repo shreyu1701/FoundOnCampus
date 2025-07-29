@@ -1,46 +1,29 @@
 package com.project.foundoncampus.views.screens
 
 import android.widget.Toast
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.project.foundoncampus.model.AppDatabase
+import com.project.foundoncampus.model.UserEntity
 import com.project.foundoncampus.nav.Route
-import com.project.foundoncampus.utils.FileUtils
+import com.project.foundoncampus.util.SessionManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,15 +31,14 @@ fun SignInScreen(navController: NavController) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var isSubmitted by remember { mutableStateOf(false) } // Track if form is submitted
-    var emailError by remember { mutableStateOf(false) } // Track email error
-    var passwordError by remember { mutableStateOf(false) } // Track password error
+    var isSubmitted by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    val db = AppDatabase.getInstance(context)
+    val sessionManager = remember { SessionManager(context) }
+    val scope = rememberCoroutineScope()
 
-    Scaffold(
-
-    ) { padding ->
+    Scaffold { padding ->
         Box(
             modifier = Modifier
                 .padding(padding)
@@ -76,7 +58,12 @@ fun SignInScreen(navController: NavController) {
                         .padding(16.dp)
                         .fillMaxWidth()
                 ) {
-                    Text("Sign In", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
+                    Text(
+                        "Sign In",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
 
                     Spacer(modifier = Modifier.height(24.dp))
 
@@ -86,7 +73,7 @@ fun SignInScreen(navController: NavController) {
                         onValueChange = { email = it },
                         label = { Text("Humber Email") },
                         modifier = Modifier.fillMaxWidth(),
-                        isError = isSubmitted && email.isBlank() // Show error only if form is submitted
+                        isError = isSubmitted && email.isBlank()
                     )
 
                     // Email Error Message
@@ -103,17 +90,16 @@ fun SignInScreen(navController: NavController) {
                         label = { Text("Password") },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
-                            val image = if (passwordVisible)
-                                Icons.Default.Visibility
-                            else Icons.Default.VisibilityOff
-
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                Icon(imageVector = image, contentDescription = "Toggle Password Visibility")
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = "Toggle Password Visibility"
+                                )
                             }
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         modifier = Modifier.fillMaxWidth(),
-                        isError = isSubmitted && password.isBlank() // Show error only if form is submitted
+                        isError = isSubmitted && password.isBlank()
                     )
 
                     // Password Error Message
@@ -129,26 +115,24 @@ fun SignInScreen(navController: NavController) {
 
                             // Check if email and password fields are filled
                             if (email.isBlank() || password.isBlank()) {
-                                Toast.makeText(context, "Please fill the Email id & Password", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Please fill the Email ID & Password", Toast.LENGTH_SHORT).show()
                             } else {
-                                val users = FileUtils.loadUsers(context)
+                                scope.launch {
+                                    val user: UserEntity? = withContext(Dispatchers.IO) {
+                                        db.userDao().login(email.trim(), password)
+                                    }
 
-                                // Check if email exists
-                                val user = users.find { it.email.equals(email, ignoreCase = true) }
-
-                                if (user == null) {
-                                    // Email not found
-                                    Toast.makeText(context, "This Humber Email id is not registered", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    // Check if the password matches
-                                    if (user.password == password) {
-                                        // Password matched, sign in
-                                        navController.navigate(Route.Home.routeName) {
-                                            popUpTo(Route.SignIn.routeName) { inclusive = true }
-                                        }
+                                    if (user == null) {
+                                        Toast.makeText(context, "Invalid email or password", Toast.LENGTH_SHORT).show()
                                     } else {
-                                        // Password mismatch
-                                        Toast.makeText(context, "Wrong Password", Toast.LENGTH_SHORT).show()
+                                        // ✅ Save session
+                                        sessionManager.saveUserEmail(user.email)
+
+                                        Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
+
+                                        navController.navigate(Route.Main.routeName) {
+                                            popUpTo(Route.Auth.routeName) { inclusive = true }
+                                        }
                                     }
                                 }
                             }
@@ -167,7 +151,6 @@ fun SignInScreen(navController: NavController) {
                             "Don't Have An Account?"
                         )
                     }
-
                 }
             }
         }

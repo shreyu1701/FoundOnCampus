@@ -3,10 +3,13 @@ package com.project.foundoncampus.nav
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.project.foundoncampus.views.screens.SignUpScreen
+import com.project.foundoncampus.views.screens.SignInScreen
 import com.project.foundoncampus.views.screens.HomeScreen
 import com.project.foundoncampus.views.screens.SearchScreen
 import com.project.foundoncampus.views.screens.CreateScreen
@@ -16,7 +19,6 @@ import com.project.foundoncampus.views.screens.ProfileScreen
 import com.project.foundoncampus.views.screens.RecentClaimedScreen
 import com.project.foundoncampus.views.screens.RecentFoundScreen
 import com.project.foundoncampus.views.screens.RecentLostScreen
-import com.project.foundoncampus.views.screens.SignInScreen
 
 @Composable
 fun NavGraph(navController: NavHostController, startDestination: String = Route.Auth.routeName) {
@@ -48,6 +50,15 @@ fun NavGraph(navController: NavHostController, startDestination: String = Route.
             composable(Route.RecentLost.routeName) { RecentLostScreen(navController) }
             composable(Route.RecentFound.routeName) { RecentFoundScreen(navController) }
             composable(Route.RecentClaimed.routeName) { RecentClaimedScreen(navController) }
+
+            // ✅ Dynamic route with argument passed via Route.Profile.createRoute(userEmail)
+            composable(
+                route = Route.Profile.routeName, // e.g., "profile/{userEmail}"
+                arguments = listOf(navArgument("userEmail") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("userEmail") ?: ""
+                ProfileScreen(navController = navController, userEmail = email)
+            }
         }
     }
 }
