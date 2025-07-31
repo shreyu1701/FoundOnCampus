@@ -1,57 +1,72 @@
 package com.project.foundoncampus.views.screens
 
-import android.annotation.SuppressLint
 import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.project.foundoncampus.model.AppDatabase
-import kotlinx.coroutines.launch
+import com.project.foundoncampus.model.UserEntity
+import com.project.foundoncampus.nav.Route
 
 @Composable
 fun ProfileScreen(navController: NavHostController, userEmail: String) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
-    var user by remember { mutableStateOf<com.project.foundoncampus.model.UserEntity?>(null) }
 
-    // Counts
-    var lostCount by remember { mutableStateOf(0) }
-    var foundCount by remember { mutableStateOf(0) }
-    var statusChangedCount by remember { mutableStateOf(0) }
+    var user by remember { mutableStateOf<UserEntity?>(null) }
+    var lostCount by remember { mutableIntStateOf(0) }
+    var foundCount by remember { mutableIntStateOf(0) }
+    var statusChangedCount by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(userEmail) {
         user = db.userDao().getUserByEmail(userEmail)
-        val allListings = db.listingDao().getAllListings()
-
-        lostCount = allListings.count {
-            it.userEmail.equals(userEmail, true) && it.type.equals("lost", true)
+        val listings = db.listingDao().getAllListings().filter {
+            it.userEmail.equals(userEmail, true)
         }
 
-        foundCount = allListings.count {
-            it.userEmail.equals(userEmail, true) && it.type.equals("found", true)
-        }
-
-        statusChangedCount = allListings.count {
+        lostCount = listings.count { it.type.equals("lost", true) }
+        foundCount = listings.count { it.type.equals("found", true) }
+        statusChangedCount = listings.count {
             it.userEmail.equals(userEmail, true) &&
-                    (it.category.equals("claimed", true) || it.category.equals("returned", true))
+                    (it.status.equals("Claimed", true) || it.status.equals("Resolved", true))
         }
     }
 
@@ -64,17 +79,11 @@ fun ProfileScreen(navController: NavHostController, userEmail: String) {
             claimedCount = statusChangedCount,
             foundedCount = foundCount,
             reportedCount = lostCount,
-            onChangeEmailClick = {},
-            onChangePasswordClick = {},
-            onLogoutClick = {
-                Toast.makeText(context, "Logging out...", Toast.LENGTH_SHORT).show()
-                navController.navigate("signin")
-            }
+            navController = navController
         )
     }
 }
 
-@SuppressLint("SuspiciousIndentation")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileContent(
@@ -85,11 +94,10 @@ fun ProfileContent(
     claimedCount: Int,
     foundedCount: Int,
     reportedCount: Int,
-    onChangeEmailClick: () -> Unit,
-    onChangePasswordClick: () -> Unit,
-    onLogoutClick: () -> Unit
+    navController: NavController
 ) {
     val context = LocalContext.current
+    var showDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -98,10 +106,8 @@ fun ProfileContent(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxWidth()
         ) {
             AsyncImage(
                 model = profilePictureUrl,
@@ -120,40 +126,44 @@ fun ProfileContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            ListingItem("Status Changed Items", claimedCount)
-            ListingItem("Found Item Added", foundedCount)
-            ListingItem("Lost Item Added", reportedCount)
+            ListingItem("Status Changed", claimedCount)
+            ListingItem("Found Items", foundedCount)
+            ListingItem("Lost Items", reportedCount)
         }
 
         Column {
-            AccountItem(Icons.Filled.Person, label = "Profile Details") {
-                Toast.makeText(context, "Click on Profile Details", Toast.LENGTH_SHORT).show()
+            AccountItem(Icons.Filled.Person, "Profile Details") {
+                Toast.makeText(context, "Clicked Profile Details", Toast.LENGTH_SHORT).show()
             }
-            Spacer(modifier = Modifier.height(16.dp))
+            AccountItem(Icons.Filled.Menu, "My Listing") {
+                navController.navigate(Route.MyListing.routeName)
+            }
+            AccountItem(Icons.Filled.AccountBox, "Account Details") {
+                Toast.makeText(context, "Clicked Account Details", Toast.LENGTH_SHORT).show()
+            }
+            AccountItem(Icons.AutoMirrored.Filled.ExitToApp, "Logout") {
+                showDialog = true
+            }
+        }
 
-            AccountItem(Icons.Filled.Menu, label = "My Listing") {
-                Toast.makeText(context, "Click on My Listing", Toast.LENGTH_SHORT).show()
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            AccountItem(Icons.Filled.AccountBox, label = "Account Details") {
-                Toast.makeText(context, "Click on Account Details", Toast.LENGTH_SHORT).show()
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-
-            AccountItem(Icons.AutoMirrored.Filled.ExitToApp, label = "Logout") {
-                onLogoutClick()
-            }
+        if (showDialog) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showDialog = false
+                        navController.navigate(Route.SignIn.routeName)
+                    }) { Text("Yes") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDialog = false }) { Text("Cancel") }
+                },
+                title = { Text("Confirm Logout") },
+                text = { Text("Are you sure you want to logout?") }
+            )
         }
 
         Spacer(modifier = Modifier.weight(1f))
-
-        Button(
-            onClick = onLogoutClick,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Logout")
-        }
     }
 }
 
@@ -175,12 +185,6 @@ fun AccountItem(icon: ImageVector, label: String, onClick: () -> Unit) {
             .padding(vertical = 8.dp)
     ) {
         Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 8.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge
-        )
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
     }
-
-
 }
-

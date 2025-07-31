@@ -1,54 +1,73 @@
 package com.project.foundoncampus.views.screens
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import coil.compose.rememberAsyncImagePainter
-import com.project.foundoncampus.model.MyListing
+import com.project.foundoncampus.model.AppDatabase
+import com.project.foundoncampus.model.ListingEntity
+import com.project.foundoncampus.util.SessionManager
+import com.project.foundoncampus.views.components.ListingCard
+import com.project.foundoncampus.views.components.ListingDialog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun MyListingScreen(
     navController: NavHostController
 ) {
-    val dummyListings = remember {
-        mutableStateListOf(
-            MyListing(
-                id = 1,
-                title = "Lost Wallet",
-                description = "Black leather wallet near cafeteria",
-                imageUrl = "https://eu-images.contentstack.com/v3/assets/blt7dcd2cfbc90d45de/blt6e3ce87e83b602fe/60dbb40b5c97640f9442cbe3/2_264.jpg"
-            ),
-            MyListing(
-                id = 2,
-                title = "Found Keys",
-                description = "Keychain found near library",
-                imageUrl = "https://images.unsplash.com/photo-1517694712202-14dd9538aa97"
-            )
-        )
+    val context = LocalContext.current
+    val db = remember { AppDatabase.getInstance(context) }
+    val sessionManager = remember { SessionManager(context) }
+    val scope = rememberCoroutineScope()
+
+    var listings by remember { mutableStateOf(listOf<ListingEntity>()) }
+
+    var userEmail by remember { mutableStateOf("") }
+    var showDialog by remember { mutableStateOf(false) }
+    var editItem by remember { mutableStateOf<ListingEntity?>(null) }
+
+    // Load data from DB
+    LaunchedEffect(Unit) {
+        val email = sessionManager.getUserEmail().first() ?: ""
+        userEmail = email
+        listings = db.listingDao().getListingsByUserEmail(userEmail)
+    }
+
+    fun refreshListings() {
+        scope.launch {
+            listings = db.listingDao().getListingsByUserEmail(userEmail)
+        }
     }
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                dummyListings.add(
-                    MyListing(
-                        id = dummyListings.size + 1,
-                        title = "New Item ${dummyListings.size + 1}",
-                        description = "Just added dummy data",
-                        imageUrl = "https://via.placeholder.com/150"
-                    )
-                )
+                editItem = null
+                showDialog = true
             }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Listing")
             }
@@ -65,58 +84,46 @@ fun MyListingScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(dummyListings) { item ->
+                items(listings) { item ->
                     ListingCard(
                         item = item,
                         onEdit = {
-                            // TODO: Edit logic placeholder
+                            editItem = item
+                            showDialog = true
                         },
                         onDelete = {
-                            dummyListings.remove(item)
+                            scope.launch {
+                                db.listingDao().deleteListing(item)
+                                refreshListings()
+                                Toast.makeText(context, "Deleted!", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     )
                 }
             }
         }
-    }
-}
 
-@Composable
-fun ListingCard(
-    item: MyListing,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = rememberAsyncImagePainter(model = item.imageUrl),
-                    contentDescription = "Item image",
-                    modifier = Modifier
-                        .size(60.dp)
-                        .padding(end = 12.dp)
-                )
-
-                Column {
-                    Text(text = item.title, style = MaterialTheme.typography.titleMedium)
-                    Text(text = item.description, style = MaterialTheme.typography.bodySmall)
-                }
-            }
-
-            Row {
-                IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
-                }
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
-                }
-            }
+        if (showDialog) {
+            ListingDialog(
+                item = editItem,
+                onDismiss = { showDialog = false },
+                onSave = { updated ->
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            if (updated.id == 0) {
+                                db.listingDao().insertListing(updated)
+                            } else {
+                                db.listingDao().updateListing(updated)
+                            }
+                            refreshListings()
+                        }
+                    }
+                    showDialog = false
+                },
+                userEmail = userEmail
+            )
         }
     }
 }
+
+

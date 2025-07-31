@@ -1,15 +1,35 @@
 package com.project.foundoncampus.views.screens
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,13 +40,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.project.foundoncampus.BuildConfig
 import com.project.foundoncampus.model.AppDatabase
 import com.project.foundoncampus.model.UserEntity
 import com.project.foundoncampus.nav.Route
 import com.project.foundoncampus.util.GmailSender
-import kotlinx.coroutines.launch
-import com.project.foundoncampus.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.mail.MessagingException
 
@@ -104,14 +124,14 @@ fun SignUpScreen(navController: NavController) {
                         onClick = {
                             nameError = name.isBlank()
                             humberIdError = !humberId.matches(Regex("^[nN]\\d{8}$"))
-                            phoneNumberError = !phoneNumber.matches(Regex("^\\d{10}$"))
+                            phoneNumberError = phoneNumber.isNotBlank() && !phoneNumber.matches(Regex("^\\d{10}$"))
                             emailError = !email.equals("${humberId}@humber.ca", ignoreCase = true)
                             passwordError = !password.matches(Regex("^(?=.*[A-Z])(?=.*\\d)(?=.*[@#\$%^&+=!]).{8,}$"))
                             confirmPasswordError = password != confirmPassword
 
-                            if (!nameError && !humberIdError && !phoneNumberError &&
-                                !emailError && !passwordError && !confirmPasswordError
-                            ) {
+                            val hasError = nameError || humberIdError || phoneNumberError || emailError || passwordError || confirmPasswordError
+
+                            if (!hasError) {
                                 scope.launch {
                                     val existing = db.userDao().getUserByEmail(email)
                                     if (existing != null) {
@@ -121,7 +141,7 @@ fun SignUpScreen(navController: NavController) {
                                             email = email,
                                             name = name,
                                             password = password,
-                                            phone = phoneNumber
+                                            phone = phoneNumber.takeIf { it.isNotBlank() }
                                         )
                                         db.userDao().insertUser(newUser)
 
@@ -136,14 +156,14 @@ fun SignUpScreen(navController: NavController) {
                                                     to = email,
                                                     subject = "Welcome to FoundOnCampus!",
                                                     body = """
-                                                        Hi $name,
+                                    Hi $name,
 
-                                                        Thank you for registering at FoundOnCampus.
+                                    Thank you for registering at FoundOnCampus.
 
-                                                        You can now sign in using your Humber ID.
+                                    You can now sign in using your Humber ID.
 
-                                                        — FoundOnCampus Team
-                                                """.trimIndent()
+                                    — FoundOnCampus Team
+                                """.trimIndent()
                                                 )
 
                                                 withContext(Dispatchers.Main) {
@@ -152,20 +172,16 @@ fun SignUpScreen(navController: NavController) {
                                                     }
                                                 }
                                             }
-                                        }
-                                        catch (e: MessagingException) {
+                                        } catch (e: MessagingException) {
                                             println("Email sending failed: ${e.message}")
                                             e.printStackTrace()
-                                            false
                                         }
 
-//                                        Toast.makeText(context, "Registered successfully!", Toast.LENGTH_SHORT).show()
                                         navController.navigate(Route.SignIn.routeName)
-
                                     }
                                 }
                             } else {
-                                Toast.makeText(context, "Please fill the data", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Please fill the data correctly", Toast.LENGTH_LONG).show()
                             }
                         },
                         modifier = Modifier.fillMaxWidth()

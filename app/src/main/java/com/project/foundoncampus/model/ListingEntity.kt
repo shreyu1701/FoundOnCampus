@@ -11,7 +11,10 @@ data class ListingEntity(
     val category: String,
     val type: String,
     val date: String,
+    val campus: String,
+    val location: String,
     val status: String?,
     val contact: String,
-    val userEmail: String
+    val userEmail: String,
+    val imageUrl: String? = null
 )
