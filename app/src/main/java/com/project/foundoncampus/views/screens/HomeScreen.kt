@@ -1,5 +1,6 @@
 package com.project.foundoncampus.views.screens
 
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,14 +53,16 @@ import com.project.foundoncampus.model.AppDatabase
 import com.project.foundoncampus.model.ListingEntity
 import com.project.foundoncampus.nav.Route
 import com.project.foundoncampus.util.SessionManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavController) {
     val context = LocalContext.current
-    val db = AppDatabase.getInstance(context)
+    val db = remember(context) { AppDatabase.getInstance(context) }
     val sessionManager = remember { SessionManager(context) }
     val scope = rememberCoroutineScope()
 
@@ -68,13 +70,15 @@ fun HomeScreen(navController: NavController) {
     var recentFound by remember { mutableStateOf<List<ListingEntity>>(emptyList()) }
     var recentClaimed by remember { mutableStateOf<List<ListingEntity>>(emptyList()) }
     var userName by remember { mutableStateOf("User") }
+    var userEmail by remember { mutableStateOf("") }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
 
     var selectedItem by remember { mutableStateOf<ListingEntity?>(null) }
 
-
     LaunchedEffect(true) {
         scope.launch {
-            val allItems = db.listingDao().getAllListings()
+            // Load listings
+            val allItems = withContext(Dispatchers.IO) { db.listingDao().getAllListings() }
 
             recentLost = allItems.filter {
                 it.type.equals("Lost", ignoreCase = true) && !it.status.equals("Claimed", ignoreCase = true)
@@ -88,13 +92,17 @@ fun HomeScreen(navController: NavController) {
                 it.status.equals("Claimed", ignoreCase = true)
             }.take(3)
 
-            // Get user email and fetch user name
-            val email = sessionManager.getUserEmail().firstOrNull() ?: ""
-            val user = db.userDao().getUserByEmail(email)
-            userName = user?.name ?: "User"
+            userEmail = sessionManager.getUserEmail().firstOrNull() ?: ""
+            withContext(Dispatchers.IO) {
+                val user = db.userDao().getUserByEmail(userEmail)
+                val profile = db.profileDao().getProfile(userEmail)
+                withContext(Dispatchers.Main) {
+                    userName = profile?.fullName?.takeIf { it.isNotBlank() } ?: (user?.name ?: "User")
+                    avatarUrl = profile?.avatarUri
+                }
+            }
         }
     }
-
 
     Scaffold(
         topBar = {
@@ -105,19 +113,39 @@ fun HomeScreen(navController: NavController) {
                     titleContentColor = Color.White
                 ),
                 navigationIcon = {
-                    IconButton(onClick = { /* profile nav */ }) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile")
+                    IconButton(onClick = {
+                        if (userEmail.isNotBlank()) {
+                            navController.navigate(
+                                "${Route.ProfileDetails.routeName}?email=${Uri.encode(userEmail)}"
+                            )
+                        }
+                    }) {
+                        if (!avatarUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(avatarUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Profile",
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(50)),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(Icons.Default.Person, contentDescription = "Profile")
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* settings nav */ }) {
+                    IconButton(onClick = { /* TODO: navigate to settings */ }) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 }
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        androidx.compose.foundation.lazy.LazyColumn(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize(),
@@ -135,7 +163,7 @@ fun HomeScreen(navController: NavController) {
                 SectionHeader("Recent Found") {
                     navController.navigate(Route.RecentFound.routeName)
                 }
-                HorizontalListSection(recentFound){ selectedItem = it }
+                HorizontalListSection(recentFound) { selectedItem = it }
                 Spacer(Modifier.height(24.dp))
             }
 
@@ -143,22 +171,26 @@ fun HomeScreen(navController: NavController) {
                 SectionHeader("Recent Claimed") {
                     navController.navigate(Route.RecentClaimed.routeName)
                 }
-                HorizontalListSection(recentClaimed){ selectedItem = it }
+                HorizontalListSection(recentClaimed) { selectedItem = it }
             }
         }
+
         selectedItem?.let { item ->
             AlertDialog(
                 onDismissRequest = { selectedItem = null },
                 confirmButton = {
-                    TextButton(onClick = { selectedItem = null }) {
-                        Text("Close")
-                    }
+                    TextButton(onClick = { selectedItem = null }) { Text("Close") }
                 },
                 title = { Text(item.title) },
                 text = {
                     Column {
                         AsyncImage(
-                            model = item.imageUrl,
+                            model = ImageRequest.Builder(context)
+                                .data(item.imageUrl)
+                                .crossfade(true)
+                                .error(R.drawable.ic_launcher_foreground)
+                                .placeholder(R.drawable.ic_launcher_foreground)
+                                .build(),
                             contentDescription = item.title,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -200,7 +232,6 @@ fun HorizontalListSection(
     }
 }
 
-
 @Composable
 fun ItemCard(item: ListingEntity, onClick: () -> Unit) {
     Column(
@@ -225,9 +256,6 @@ fun ItemCard(item: ListingEntity, onClick: () -> Unit) {
         Text(item.description, style = MaterialTheme.typography.bodySmall, maxLines = 2)
     }
 }
-
-
-
 
 @Composable
 fun SectionHeader(label: String, onClick: () -> Unit) {

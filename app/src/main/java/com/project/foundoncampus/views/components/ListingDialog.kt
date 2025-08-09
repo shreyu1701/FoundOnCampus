@@ -100,18 +100,21 @@ fun ListingDialog(
                         campus = campus,
                         location = location,
                         status = status
+                        // imageUrl & claimedDate remain whatever `item` had
                     ) ?: ListingEntity(
                         id = 0,
                         title = title,
                         description = description,
-                        userEmail = userEmail,
-                        type = type,
                         category = category,
+                        type = type,
+                        date = dateNow,
                         campus = campus,
                         location = location,
-                        date = dateNow,
                         status = status,
-                        contact = contact
+                        contact = contact,
+                        userEmail = userEmail,
+                        imageUrl = null,
+                        claimedDate = null
                     )
                     onSave(updatedListing)
                 }

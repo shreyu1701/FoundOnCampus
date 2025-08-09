@@ -21,6 +21,7 @@ sealed class Route(val routeName: String) {
     object Profile : Route("profile/{userEmail}") {
         fun createRoute(userEmail: String): String = "profile/$userEmail"
     }
+    object ProfileDetails : Route("profileDetails")
 }
 
 

@@ -15,6 +15,7 @@ import com.project.foundoncampus.views.screens.SearchScreen
 import com.project.foundoncampus.views.screens.CreateScreen
 import com.project.foundoncampus.views.screens.HistoryScreen
 import com.project.foundoncampus.views.screens.MyListingScreen
+import com.project.foundoncampus.views.screens.ProfileDetailsScreen
 import com.project.foundoncampus.views.screens.ProfileScreen
 import com.project.foundoncampus.views.screens.RecentClaimedScreen
 import com.project.foundoncampus.views.screens.RecentFoundScreen
@@ -57,6 +58,13 @@ fun NavGraph(navController: NavHostController, startDestination: String = Route.
             ) { backStackEntry ->
                 val email = backStackEntry.arguments?.getString("userEmail") ?: ""
                 ProfileScreen(navController = navController, userEmail = email)
+            }
+            composable(
+                route = Route.ProfileDetails.routeName + "?email={email}",
+                arguments = listOf(navArgument("email") { type = NavType.StringType; nullable = false })
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email")!!
+                ProfileDetailsScreen(navController = navController, userEmail = email)
             }
         }
     }

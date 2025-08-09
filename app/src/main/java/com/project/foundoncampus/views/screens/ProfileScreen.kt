@@ -1,16 +1,9 @@
 package com.project.foundoncampus.views.screens
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -23,14 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,44 +30,61 @@ import coil.compose.AsyncImage
 import com.project.foundoncampus.model.AppDatabase
 import com.project.foundoncampus.model.UserEntity
 import com.project.foundoncampus.nav.Route
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ProfileScreen(navController: NavHostController, userEmail: String) {
     val context = LocalContext.current
-    val db = remember { AppDatabase.getInstance(context) }
-    val scope = rememberCoroutineScope()
+    val db = remember(context) { AppDatabase.getInstance(context) }
 
     var user by remember { mutableStateOf<UserEntity?>(null) }
+    var fullName by remember { mutableStateOf("") }
+    var contactNumber by remember { mutableStateOf("") }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+
     var lostCount by remember { mutableIntStateOf(0) }
     var foundCount by remember { mutableIntStateOf(0) }
     var statusChangedCount by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(userEmail) {
-        user = db.userDao().getUserByEmail(userEmail)
-        val listings = db.listingDao().getAllListings().filter {
-            it.userEmail.equals(userEmail, true)
-        }
+        withContext(Dispatchers.IO) {
+            val u = db.userDao().getUserByEmail(userEmail)
+            val p = db.profileDao().getProfile(userEmail) // profiles keyed by email
 
-        lostCount = listings.count { it.type.equals("lost", true) }
-        foundCount = listings.count { it.type.equals("found", true) }
-        statusChangedCount = listings.count {
-            it.userEmail.equals(userEmail, true) &&
-                    (it.status.equals("Claimed", true) || it.status.equals("Resolved", true))
+            val listings = db.listingDao().getAllListings().filter {
+                it.userEmail.equals(userEmail, true)
+            }
+
+            withContext(Dispatchers.Main) {
+                user = u
+                // Prefer profile values; fallback to UserEntity; final fallback to placeholders
+                fullName = p?.fullName?.takeIf { it.isNotBlank() } ?: (u?.name ?: "Your Name")
+                contactNumber = p?.phone ?: (u?.phone ?: "Not Provided")
+                avatarUrl = p?.avatarUri
+
+                lostCount = listings.count { it.type.equals("lost", true) }
+                foundCount = listings.count { it.type.equals("found", true) }
+                statusChangedCount = listings.count {
+                    it.userEmail.equals(userEmail, true) &&
+                            (it.status.equals("Claimed", true) || it.status.equals("Resolved", true))
+                }
+            }
         }
     }
 
-    user?.let {
-        ProfileContent(
-            profilePictureUrl = "https://www.kindpng.com/picc/m/252-2524695_dummy-profile-image-jpg-hd-png-download.png",
-            fullName = it.name,
-            email = it.email,
-            contactNumber = it.phone ?: "Not Provided",
-            claimedCount = statusChangedCount,
-            foundedCount = foundCount,
-            reportedCount = lostCount,
-            navController = navController
-        )
-    }
+    // Show once we’ve at least loaded the base user record (or always show)
+    ProfileContent(
+        profilePictureUrl = avatarUrl
+            ?: "https://www.kindpng.com/picc/m/252-2524695_dummy-profile-image-jpg-hd-png-download.png",
+        fullName = fullName,
+        email = userEmail,
+        contactNumber = contactNumber,
+        claimedCount = statusChangedCount,
+        foundedCount = foundCount,
+        reportedCount = lostCount,
+        navController = navController
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,7 +136,9 @@ fun ProfileContent(
 
         Column {
             AccountItem(Icons.Filled.Person, "Profile Details") {
-                Toast.makeText(context, "Clicked Profile Details", Toast.LENGTH_SHORT).show()
+                navController.navigate(
+                    "${Route.ProfileDetails.routeName}?email=${Uri.encode(email)}"
+                )
             }
             AccountItem(Icons.Filled.Menu, "My Listing") {
                 navController.navigate(Route.MyListing.routeName)
@@ -146,24 +151,24 @@ fun ProfileContent(
             }
         }
 
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showDialog = false
-                        navController.navigate(Route.SignIn.routeName)
-                    }) { Text("Yes") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDialog = false }) { Text("Cancel") }
-                },
-                title = { Text("Confirm Logout") },
-                text = { Text("Are you sure you want to logout?") }
-            )
-        }
-
         Spacer(modifier = Modifier.weight(1f))
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    navController.navigate(Route.SignIn.routeName)
+                }) { Text("Yes") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDialog = false }) { Text("Cancel") }
+            },
+            title = { Text("Confirm Logout") },
+            text = { Text("Are you sure you want to logout?") }
+        )
     }
 }
 

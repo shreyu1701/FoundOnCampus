@@ -2,6 +2,7 @@ package com.project.foundoncampus.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.util.Date
 
 @Entity(tableName = "listings")
 data class ListingEntity(
@@ -16,5 +17,6 @@ data class ListingEntity(
     val status: String?,
     val contact: String,
     val userEmail: String,
-    val imageUrl: String? = null
+    val imageUrl: String?,
+    val claimedDate: Date? = null
 )
