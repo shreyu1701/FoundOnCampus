@@ -13,6 +13,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.project.foundoncampus.nav.Route
@@ -37,11 +38,13 @@ private val bottomTabs = listOf(
 fun BottomTabsBar(
     selectedRoute: String,
     onNavigate: (String) -> Unit,
-    currentUserEmail: String
+    currentUserEmail: String,
+    modifier: Modifier = Modifier // <-- allow offset/animation from Scaffold
 ) {
     val cs = MaterialTheme.colorScheme
 
     NavigationBar(
+        modifier = modifier,
         containerColor = cs.surface,
         contentColor = cs.onSurface,
         tonalElevation = 3.dp

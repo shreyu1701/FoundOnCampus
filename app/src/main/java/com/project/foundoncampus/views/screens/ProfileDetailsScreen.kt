@@ -1,5 +1,6 @@
 package com.project.foundoncampus.views.screens
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -49,9 +50,21 @@ fun ProfileDetailsScreen(
     var savedOnce by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
 
-    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (isEditing) {
-            avatarUri = uri?.toString()
+    // Use OpenDocument so we can persist URI read permission across restarts
+    val pickImage = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (isEditing && uri != null) {
+            // Persist read access across app restarts
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: SecurityException) {
+                // Ignore if already persisted or not needed
+            }
+            avatarUri = uri.toString()
             savedOnce = false
         }
     }
@@ -145,7 +158,12 @@ fun ProfileDetailsScreen(
         }
     ) { inner ->
         if (loading) {
-            Box(Modifier.fillMaxSize().padding(inner), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(inner),
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator()
             }
         } else {
@@ -157,12 +175,21 @@ fun ProfileDetailsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val avatarModifier = Modifier
+                        .size(84.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .let { base ->
+                            if (isEditing) {
+                                base.clickable {
+                                    // Launch with MIME array for OpenDocument
+                                    pickImage.launch(arrayOf("image/*"))
+                                }
+                            } else base
+                        }
+
                     Box(
-                        modifier = Modifier
-                            .size(84.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .let { if (isEditing) it.clickable { pickImage.launch("image/*") } else it },
+                        modifier = avatarModifier,
                         contentAlignment = Alignment.Center
                     ) {
                         if (avatarUri != null) {
@@ -179,7 +206,9 @@ fun ProfileDetailsScreen(
                             )
                         }
                     }
+
                     Spacer(Modifier.width(16.dp))
+
                     Column(Modifier.weight(1f)) {
                         if (isEditing) {
                             OutlinedTextField(
@@ -190,7 +219,10 @@ fun ProfileDetailsScreen(
                                 modifier = Modifier.fillMaxWidth()
                             )
                         } else {
-                            Text(fullName.ifBlank { "—" }, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                fullName.ifBlank { "—" },
+                                style = MaterialTheme.typography.titleMedium
+                            )
                             Text("Full name", style = MaterialTheme.typography.labelSmall)
                         }
                         Spacer(Modifier.height(8.dp))
@@ -215,7 +247,11 @@ fun ProfileDetailsScreen(
                 }
 
                 if (error != null) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        error!!,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
 
                 if (savedOnce && !isEditing) {

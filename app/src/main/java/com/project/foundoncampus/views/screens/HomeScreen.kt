@@ -1,7 +1,6 @@
 package com.project.foundoncampus.views.screens
 
 import android.net.Uri
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -57,7 +58,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.foundation.lazy.LazyColumn
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,11 +144,11 @@ fun HomeScreen(navController: NavController) {
                         }
                     }
                 },
-                actions = {
-                    IconButton(onClick = { /* TODO: navigate to settings */ }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                }
+//                actions = {
+//                    IconButton(onClick = { /* TODO: navigate to settings */ }) {
+//                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+//                    }
+//                }
             )
         }
     ) { innerPadding ->
@@ -244,9 +244,11 @@ fun HorizontalListSection(
 fun ItemCard(item: ListingEntity, onClick: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val ty = MaterialTheme.typography
+    val shortDesc = remember(item.description) { truncateWords(item.description ?: "", 10) }
 
     Card(
         onClick = onClick,
+        modifier = Modifier.width(140.dp),
         colors = CardDefaults.cardColors(containerColor = cs.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         shape = RoundedCornerShape(16.dp)
@@ -266,10 +268,29 @@ fun ItemCard(item: ListingEntity, onClick: () -> Unit) {
                 contentScale = ContentScale.Crop
             )
             Spacer(Modifier.height(6.dp))
-            Text(item.title, style = ty.titleSmall, color = cs.onSurface, maxLines = 1)
-            Text(item.description, style = ty.bodySmall, color = cs.onSurface, maxLines = 2)
+            Text(
+                item.title,
+                style = ty.titleSmall,
+                color = cs.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                shortDesc,
+                style = ty.bodySmall,
+                color = cs.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                softWrap = true
+            )
         }
     }
+}
+
+private fun truncateWords(text: String, maxWords: Int = 2): String {
+    val words = text.trim().split(Regex("\\s+"))
+    if (words.size <= maxWords) return text.trim()
+    return words.take(maxWords).joinToString(" ") + "…"
 }
 
 @Composable

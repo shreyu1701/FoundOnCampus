@@ -4,7 +4,8 @@ import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
@@ -13,8 +14,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.project.foundoncampus.BuildConfig
@@ -26,14 +29,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
 fun CreateScreen(navController: NavController) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
+    val session = remember { SessionManager(context) }
     val scope = rememberCoroutineScope()
-    val sessionManager = remember { SessionManager(context) }
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
 
     var selectedType by rememberSaveable { mutableStateOf("Lost") }
     var item by rememberSaveable { mutableStateOf("") }
@@ -41,21 +46,41 @@ fun CreateScreen(navController: NavController) {
     var campus by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf("") }
     var date by rememberSaveable { mutableStateOf("") }
-    var itemDescription by rememberSaveable { mutableStateOf("") }
+    var desc by rememberSaveable { mutableStateOf("") }
     var imageUrl by rememberSaveable { mutableStateOf("") }
-    var isSending by remember { mutableStateOf(false) }
+    var submitted by rememberSaveable { mutableStateOf(false) }
+    var sending by remember { mutableStateOf(false) }
+    var showThanks by remember { mutableStateOf(false) } // <<< NEW
 
-    val calendar = Calendar.getInstance()
-    val datePickerDialog = DatePickerDialog(
+    val cal = Calendar.getInstance()
+    val datePicker = DatePickerDialog(
         context,
-        { _, year, month, day -> date = "%04d-%02d-%02d".format(year, month + 1, day) },
-        calendar.get(Calendar.YEAR),
-        calendar.get(Calendar.MONTH),
-        calendar.get(Calendar.DAY_OF_MONTH)
-    )
+        { _, y, m, d -> date = "%04d-%02d-%02d".format(y, m + 1, d) },
+        cal.get(Calendar.YEAR),
+        cal.get(Calendar.MONTH),
+        cal.get(Calendar.DAY_OF_MONTH)
+    ).apply {
+        // Block future dates in the picker UI
+        datePicker.maxDate = System.currentTimeMillis()
+    }
 
     val cs = MaterialTheme.colorScheme
     val ty = MaterialTheme.typography
+
+    val itemErr = submitted && item.isBlank()
+    val catErr = submitted && category.isBlank()
+    val campErr = submitted && campus.isBlank()
+    val locErr  = submitted && location.isBlank()
+    val dateEmptyErr = submitted && date.isBlank()
+    val futureDate = remember(date) { isFutureDate(date) }
+    val futureDateErr = submitted && date.isNotBlank() && futureDate
+
+    val valid = item.isNotBlank() &&
+            category.isNotBlank() &&
+            campus.isNotBlank() &&
+            location.isNotBlank() &&
+            date.isNotBlank() &&
+            !futureDate
 
     Scaffold { padding ->
         Column(
@@ -68,9 +93,9 @@ fun CreateScreen(navController: NavController) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = cs.surface)
+                colors = CardDefaults.cardColors(containerColor = cs.surface),
+                elevation = CardDefaults.cardElevation(2.dp),
+                shape = MaterialTheme.shapes.large
             ) {
                 Column(
                     modifier = Modifier
@@ -78,46 +103,109 @@ fun CreateScreen(navController: NavController) {
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        "Report Item",
-                        style = ty.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                        color = cs.onSurface
+                    Text("Report Item", style = ty.titleLarge.copy(fontWeight = FontWeight.SemiBold))
+
+                    // Type
+                    LabeledRadioGroup(
+                        label = "Report *",
+                        selected = selectedType,
+                        options = listOf("Lost", "Found"),
+                        onChange = { selectedType = it }
                     )
 
-                    LabeledRadioGroup("Report", selectedType, listOf("Lost", "Found")) { selectedType = it }
+                    // Category
+                    CustomDropdown(
+                        label = "Category *",
+                        options = listOf("Electronics", "Clothing", "Books", "Accessories"),
+                        selectedOption = category,
+                        onOptionSelected = { category = it }
+                    )
+                    if (catErr) Text("Please choose a category", color = cs.error, style = ty.bodySmall)
 
-                    CustomDropdown("Category", listOf("Electronics", "Clothing", "Books", "Accessories"), category) {
-                        category = it
+                    // Campus
+                    CustomDropdown(
+                        label = "Campus *",
+                        options = listOf("IGS Campus", "North Campus", "Lakeshore Campus"),
+                        selectedOption = campus,
+                        onOptionSelected = { campus = it }
+                    )
+                    if (campErr) Text("Please choose a campus", color = cs.error, style = ty.bodySmall)
+
+                    // Location
+                    CustomDropdown(
+                        label = "Location *",
+                        options = listOf("Library", "Cafeteria", "Auditorium", "Hostel"),
+                        selectedOption = location,
+                        onOptionSelected = { location = it }
+                    )
+                    if (locErr) Text("Please choose a location", color = cs.error, style = ty.bodySmall)
+
+                    // Image (optional)
+                    LabeledTextField(
+                        label = "Item Image URL (optional)",
+                        value = imageUrl,
+                        onChange = { imageUrl = it },
+                        ime = ImeAction.Next,
+                        onNext = { focus.moveFocus(FocusDirection.Down) }
+                    )
+
+                    // Title
+                    LabeledTextField(
+                        label = "Item *",
+                        value = item,
+                        onChange = { item = it },
+                        isError = itemErr,
+                        errorText = "Item name is required",
+                        ime = ImeAction.Next,
+                        onNext = { focus.moveFocus(FocusDirection.Down) }
+                    )
+
+                    // Description
+                    LabeledMultilineField(
+                        label = "Description",
+                        value = desc,
+                        onChange = { desc = it }
+                    )
+
+                    // Date
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Date *", style = ty.labelLarge, modifier = Modifier.width(100.dp))
+                        OutlinedTextField(
+                            value = date,
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = {
+                                IconButton(onClick = { datePicker.show() }) {
+                                    Icon(Icons.Filled.CalendarToday, contentDescription = null)
+                                }
+                            },
+                            placeholder = { Text("Select Date") },
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = dateEmptyErr || futureDateErr
+                        )
                     }
-
-                    CustomDropdown("Campus", listOf("IGS Campus", "North Campus", "Lakeshore Campus"), campus) {
-                        campus = it
-                    }
-
-                    CustomDropdown("Location", listOf("Library", "Cafeteria", "Auditorium", "Hostel"), location) {
-                        location = it
-                    }
-
-                    LabeledTextField("Item Image URL (optional)", imageUrl) { imageUrl = it }
-
-                    LabeledTextField("Item", item) { item = it }
-
-                    LabeledMultilineField("Description", itemDescription) { itemDescription = it }
-
-                    LabeledDateField("Date", date, onPickDate = { datePickerDialog.show() })
+                    if (dateEmptyErr) Text("Please pick a date", color = cs.error, style = ty.bodySmall)
+                    if (futureDateErr) Text("Future dates are not allowed", color = cs.error, style = ty.bodySmall)
 
                     Button(
                         onClick = {
-                            if (item.isBlank()) {
-                                Toast.makeText(context, "Please fill in the item name.", Toast.LENGTH_SHORT).show()
-                                return@Button
-                            }
-                            isSending = true
+                            submitted = true
+                            if (!valid) return@Button
+
+                            sending = true
                             scope.launch {
-                                val email = sessionManager.getUserEmail().first().orEmpty()
+                                val email = session.getUserEmail().first().orEmpty()
+
+                                // Extra safety: validate again at submit time
+                                if (isFutureDate(date)) {
+                                    sending = false
+                                    Toast.makeText(context, "Future dates are not allowed", Toast.LENGTH_SHORT).show()
+                                    return@launch
+                                }
+
                                 val listing = ListingEntity(
                                     title = item,
-                                    description = itemDescription,
+                                    description = desc,
                                     category = category,
                                     type = selectedType,
                                     date = date,
@@ -126,60 +214,90 @@ fun CreateScreen(navController: NavController) {
                                     status = "Pending",
                                     contact = email,
                                     userEmail = email,
-                                    imageUrl = imageUrl
+                                    imageUrl = imageUrl.ifBlank { null }
                                 )
+                                withContext(Dispatchers.IO) { db.listingDao().insertListing(listing) }
 
-                                db.listingDao().insertListing(listing)
-                                sendEmailAsync(context, email, item, selectedType, date)
+                                // Fire-and-forget email
+                                withContext(Dispatchers.IO) {
+                                    try {
+                                        GmailSender(BuildConfig.EMAIL_USER, BuildConfig.EMAIL_PASS)
+                                            .sendEmail(
+                                                to = email,
+                                                subject = "New Item Added",
+                                                body = "A new item titled \"$item\" was reported as $selectedType on $date."
+                                            )
+                                    } catch (_: Exception) { /* ignore */ }
+                                }
 
-                                // Reset form
-                                item = ""; category = ""; campus = ""; location = ""
-                                date = ""; itemDescription = ""; selectedType = "Lost"; imageUrl = ""
-                                isSending = false
+                                // Reset form and hide validation errors
+                                item = ""
+                                category = ""
+                                campus = ""
+                                location = ""
+                                date = ""
+                                desc = ""
+                                selectedType = "Lost"
+                                imageUrl = ""
+                                submitted = false           // <<< important so errors don’t show
+                                sending = false
+
+                                // Show Thank You popup
+                                showThanks = true
+
+                                // Optional toast (keep if you still want it)
+                                // Toast.makeText(context, "Listing submitted", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSending
-                    ) { Text(if (isSending) "Submitting..." else "Submit") }
+                        enabled = valid && !sending,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (sending) "Submitting…" else "Submit") }
                 }
             }
         }
     }
-}
 
-private suspend fun sendEmailAsync(context: android.content.Context, email: String, item: String, type: String, date: String) {
-    withContext(Dispatchers.IO) {
-        try {
-            val success = GmailSender(BuildConfig.EMAIL_USER, BuildConfig.EMAIL_PASS)
-                .sendEmail(
-                    to = email,
-                    subject = "New Item Added",
-                    body = "A new item titled \"$item\" was reported as $type on $date."
-                )
-            withContext(Dispatchers.Main) {
-                val message = if (success) "Listing saved & Email sent!" else "Listing saved, but email failed!"
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            }
-        } catch (e: Exception) {
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Listing saved, but email crashed!", Toast.LENGTH_SHORT).show()
-            }
-        }
+    // ---- Thank You Dialog ----
+    if (showThanks) {
+        AlertDialog(
+            onDismissRequest = { showThanks = false },
+            confirmButton = {
+                TextButton(onClick = { showThanks = false }) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Thank you!") },
+            text = { Text("Your item has been submitted. We appreciate your contribution to the campus community.") }
+        )
     }
 }
 
-// ---- Reusable UI ----
+// Strict check for future date based on yyyy-MM-dd
+private fun isFutureDate(dateStr: String): Boolean {
+    if (dateStr.isBlank()) return false
+    return try {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
+        val picked = sdf.parse(dateStr) ?: return false
+        // Normalize "today" to date-only (ignore time-of-day)
+        val todayStr = sdf.format(Date())
+        val today = sdf.parse(todayStr) ?: return false
+        picked.after(today)
+    } catch (_: Exception) {
+        false
+    }
+}
+
+/* ---------- Reusable bits ---------- */
 
 @Composable
 fun LabeledRadioGroup(label: String, selected: String, options: List<String>, onChange: (String) -> Unit) {
     val ty = MaterialTheme.typography
-    val cs = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("$label:", style = ty.labelLarge, color = cs.onSurface, modifier = Modifier.width(100.dp))
+        Text(label, style = ty.labelLarge, modifier = Modifier.width(100.dp))
         options.forEachIndexed { i, option ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(selected = selected == option, onClick = { onChange(option) })
-                Text(option, style = ty.bodyMedium, color = cs.onSurface)
+                Text(option, style = ty.bodyMedium)
             }
             if (i < options.lastIndex) Spacer(Modifier.width(16.dp))
         }
@@ -187,37 +305,34 @@ fun LabeledRadioGroup(label: String, selected: String, options: List<String>, on
 }
 
 @Composable
-fun LabeledTextField(label: String, value: String, onChange: (String) -> Unit) {
+fun LabeledTextField(
+    label: String,
+    value: String,
+    onChange: (String) -> Unit,
+    isError: Boolean = false,
+    errorText: String? = null,
+    ime: ImeAction = ImeAction.Next,
+    onNext: () -> Unit = {}
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
         modifier = Modifier.fillMaxWidth(),
-        singleLine = true
+        isError = isError,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ime),
+        keyboardActions = KeyboardActions(onNext = { onNext() }),
+        supportingText = {
+            if (isError && !errorText.isNullOrBlank()) Text(errorText, color = MaterialTheme.colorScheme.error)
+        }
     )
 }
 
 @Composable
-fun LabeledDateField(label: String, date: String, onPickDate: () -> Unit) {
-    val ty = MaterialTheme.typography
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("$label:", style = ty.labelLarge, modifier = Modifier.width(100.dp))
-        OutlinedTextField(
-            value = date,
-            onValueChange = {},
-            readOnly = true,
-            modifier = Modifier.fillMaxWidth(),
-            trailingIcon = { IconButton(onClick = onPickDate) { Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date") } },
-            placeholder = { Text("Select Date") }
-        )
-    }
-}
-
-@Composable
 fun LabeledMultilineField(label: String, value: String, onChange: (String) -> Unit) {
-    val ty = MaterialTheme.typography
     Row(verticalAlignment = Alignment.Top) {
-        Text("$label:", style = ty.labelLarge, modifier = Modifier.width(100.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.width(100.dp))
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
@@ -237,7 +352,6 @@ fun CustomDropdown(
     onOptionSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
         OutlinedTextField(
             value = selectedOption,
