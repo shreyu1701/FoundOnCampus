@@ -2,4 +2,13 @@
 <resources>
 
     <style name="Theme.FoundOnCampus" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.FoundOnCampus.Splash" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Android 12+ API -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <!-- Use your brand icon; you can point to a dedicated drawable too -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenAnimationDuration">200</item>
+        <!-- After splash, switch to your normal theme -->
+        <item name="postSplashScreenTheme">@style/Theme.FoundOnCampus</item>
+    </style>
 </resources>
