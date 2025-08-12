@@ -1,47 +1,21 @@
 package com.project.foundoncampus.views.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -52,7 +26,6 @@ import com.project.foundoncampus.model.ListingEntity
 fun SearchScreen(navController: NavController) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
-    val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
     var searchQuery by remember { mutableStateOf("") }
@@ -69,6 +42,9 @@ fun SearchScreen(navController: NavController) {
                 item.description.contains(searchQuery, ignoreCase = true) ||
                 item.category.contains(searchQuery, ignoreCase = true)
     }
+
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
 
     Scaffold { innerPadding ->
         Column(
@@ -91,9 +67,7 @@ fun SearchScreen(navController: NavController) {
                         IconButton(onClick = {
                             searchQuery = ""
                             focusManager.clearFocus()
-                        }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear Search")
-                        }
+                        }) { Icon(Icons.Default.Close, contentDescription = "Clear Search") }
                     }
                 },
             )
@@ -103,10 +77,10 @@ fun SearchScreen(navController: NavController) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .shadow(4.dp, RoundedCornerShape(16.dp))
                             .clickable { selectedItem = item },
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F4FF))
+                        colors = CardDefaults.cardColors(containerColor = cs.surface),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -128,11 +102,15 @@ fun SearchScreen(navController: NavController) {
                             )
 
                             Column {
-                                Text(item.title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                                Text(item.category, fontSize = 14.sp, color = Color.Gray)
-                                Text("Date: ${item.date}", fontSize = 12.sp, color = Color.Gray)
-                                Text("Contact: ${item.contact}", fontSize = 12.sp, color = Color.Gray)
-                                Text("Type: ${item.type} | Status: ${item.status}", fontSize = 12.sp, color = Color.Gray)
+                                Text(item.title, style = ty.titleSmall, color = cs.onSurface, maxLines = 1)
+                                Text(item.category, style = ty.bodySmall, color = cs.onSurfaceVariant)
+                                Text("Date: ${item.date}", style = ty.bodySmall, color = cs.onSurfaceVariant)
+                                Text("Contact: ${item.contact}", style = ty.bodySmall, color = cs.onSurfaceVariant)
+                                Text(
+                                    "Type: ${item.type} | Status: ${item.status ?: "-"}",
+                                    style = ty.bodySmall,
+                                    color = cs.onSurfaceVariant
+                                )
                             }
                         }
                     }
@@ -141,22 +119,22 @@ fun SearchScreen(navController: NavController) {
         }
     }
 
-    if (selectedItem != null) {
+    selectedItem?.let { sel ->
         AlertDialog(
             onDismissRequest = { selectedItem = null },
-            title = {
-                Text("${selectedItem!!.title} Details", fontWeight = FontWeight.Bold)
-            },
+            confirmButton = { TextButton(onClick = { selectedItem = null }) { Text("Okay") } },
+            dismissButton = { TextButton(onClick = { selectedItem = null }) { Text("Close") } },
+            title = { Text("${sel.title} Details", style = ty.titleMedium) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
-                            .data(selectedItem!!.imageUrl)
+                            .data(sel.imageUrl)
                             .crossfade(true)
                             .error(com.project.foundoncampus.R.drawable.ic_launcher_foreground)
                             .placeholder(com.project.foundoncampus.R.drawable.ic_launcher_foreground)
                             .build(),
-                        contentDescription = selectedItem!!.title,
+                        contentDescription = sel.title,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp)
@@ -165,22 +143,13 @@ fun SearchScreen(navController: NavController) {
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Category: ${selectedItem!!.category}")
-                    Text("Date: ${selectedItem!!.date}")
-                    Text("Contact: ${selectedItem!!.contact}")
-                    Text("Type: ${selectedItem!!.type}")
-                    Text("Status: ${selectedItem!!.status}")
-                    Text("Description:${selectedItem!!.description}")
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { selectedItem = null }) {
-                    Text("Okay")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { selectedItem = null }) {
-                    Text("Close")
+                    Text("Category: ${sel.category}", style = ty.bodyMedium)
+                    Text("Date: ${sel.date}", style = ty.bodyMedium)
+                    Text("Contact: ${sel.contact}", style = ty.bodyMedium)
+                    Text("Type: ${sel.type}", style = ty.bodyMedium)
+                    Text("Status: ${sel.status}", style = ty.bodyMedium)
+                    Text("Description:", style = ty.labelLarge)
+                    Text(sel.description, style = ty.bodySmall)
                 }
             }
         )

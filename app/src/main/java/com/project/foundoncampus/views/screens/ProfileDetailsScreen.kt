@@ -31,22 +31,19 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ProfileDetailsScreen(
     navController: NavController,
-    userEmail: String // 🔑 pass the logged-in user's email
+    userEmail: String
 ) {
     val context = LocalContext.current
     val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
 
-    // Data
     var user by remember { mutableStateOf<UserEntity?>(null) }
     var existing by remember { mutableStateOf<ProfileEntity?>(null) }
 
-    // Editable fields
     var fullName by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var avatarUri by remember { mutableStateOf<String?>(null) }
 
-    // UI state
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var savedOnce by remember { mutableStateOf(false) }
@@ -59,12 +56,11 @@ fun ProfileDetailsScreen(
         }
     }
 
-    // Load current user + profile by email
     LaunchedEffect(userEmail) {
         loading = true
         withContext(Dispatchers.IO) {
             val u = db.userDao().getUserByEmail(userEmail)
-            val p = db.profileDao().getProfile(userEmail) // use email as profile key
+            val p = db.profileDao().getProfile(userEmail)
             withContext(Dispatchers.Main) {
                 user = u
                 existing = p
@@ -82,14 +78,13 @@ fun ProfileDetailsScreen(
         if (phone.isNotBlank() && digits.length !in 7..15) { error = "Invalid phone number"; return }
         error = null
 
-        // preserve fields we don't edit
         val preservedStudentId = existing?.studentId
         val preservedDepartment = existing?.department
 
         scope.launch(Dispatchers.IO) {
             db.profileDao().upsert(
                 ProfileEntity(
-                    userId = userEmail,             // 🔑 key by email
+                    userId = userEmail,
                     fullName = fullName.trim(),
                     phone = phone.ifBlank { null },
                     studentId = preservedStudentId,
@@ -142,9 +137,7 @@ fun ProfileDetailsScreen(
                             TextButton(onClick = ::cancelEdit) { Text("Cancel") }
                             TextButton(onClick = ::save) { Text("Save") }
                         } else {
-                            TextButton(onClick = { isEditing = true; savedOnce = false }) {
-                                Text("Edit")
-                            }
+                            TextButton(onClick = { isEditing = true; savedOnce = false }) { Text("Edit") }
                         }
                     }
                 }
@@ -163,7 +156,6 @@ fun ProfileDetailsScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Avatar + Name
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
@@ -181,8 +173,10 @@ fun ProfileDetailsScreen(
                                 contentScale = ContentScale.Crop
                             )
                         } else {
-                            Text(if (isEditing) "Add\nPhoto" else "No\nPhoto",
-                                style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                if (isEditing) "Add\nPhoto" else "No\nPhoto",
+                                style = MaterialTheme.typography.labelMedium
+                            )
                         }
                     }
                     Spacer(Modifier.width(16.dp))
@@ -200,7 +194,6 @@ fun ProfileDetailsScreen(
                             Text("Full name", style = MaterialTheme.typography.labelSmall)
                         }
                         Spacer(Modifier.height(8.dp))
-                        // Email is read-only and shown always
                         Text(userEmail, style = MaterialTheme.typography.bodySmall)
                         Text("Email", style = MaterialTheme.typography.labelSmall)
                     }

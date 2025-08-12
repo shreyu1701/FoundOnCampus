@@ -1,11 +1,8 @@
 package com.project.foundoncampus.views.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -18,10 +15,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.project.foundoncampus.model.ListingEntity
-
 
 @Composable
 fun ListingCard(
@@ -29,9 +27,17 @@ fun ListingCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(4.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = cs.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        border = CardDefaults.outlinedCardBorder(true)
     ) {
         Row(
             modifier = Modifier
@@ -44,25 +50,53 @@ fun ListingCard(
                 contentDescription = item.title,
                 modifier = Modifier
                     .size(72.dp)
-                    .padding(end = 16.dp),
+                    .clip(RoundedCornerShape(12.dp)),
             )
 
+            Spacer(Modifier.width(16.dp))
+
             Column(modifier = Modifier.weight(1f)) {
-                Text(item.title, style = MaterialTheme.typography.titleMedium)
-                Text(item.category, style = MaterialTheme.typography.bodySmall)
-                Text("Date: ${item.date}", style = MaterialTheme.typography.bodySmall)
-                Text("Status: ${item.status}", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    item.title,
+                    style = ty.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = cs.primary
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(item.category, style = ty.bodySmall, color = cs.onSurfaceVariant)
+                Text("Date: ${item.date}", style = ty.bodySmall, color = cs.onSurfaceVariant)
+                Text(
+                    "Status: ${item.status ?: "-"}",
+                    style = ty.bodySmall,
+                    color = statusColor(item.status)
+                )
             }
 
-            Column {
+            Column(horizontalAlignment = Alignment.End) {
                 IconButton(onClick = onEdit) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Edit",
+                        tint = cs.secondary
+                    )
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = cs.error
+                    )
                 }
             }
         }
     }
 }
 
+@Composable
+private fun statusColor(status: String?): androidx.compose.ui.graphics.Color {
+    val cs = MaterialTheme.colorScheme
+    return when ((status ?: "").lowercase()) {
+        "claimed", "resolved" -> cs.tertiary.takeIf { it != cs.primary } ?: cs.primary
+        "pending" -> cs.secondary
+        else -> cs.onSurfaceVariant
+    }
+}

@@ -8,6 +8,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.project.foundoncampus.views.screens.AccountDetailsScreen
 import com.project.foundoncampus.views.screens.SignUpScreen
 import com.project.foundoncampus.views.screens.SignInScreen
 import com.project.foundoncampus.views.screens.HomeScreen
@@ -65,6 +66,13 @@ fun NavGraph(navController: NavHostController, startDestination: String = Route.
             ) { backStackEntry ->
                 val email = backStackEntry.arguments?.getString("email")!!
                 ProfileDetailsScreen(navController = navController, userEmail = email)
+            }
+            composable(
+                route = Route.AccountDetails.routeName + "?email={email}",
+                arguments = listOf(navArgument("email") { type = NavType.StringType; nullable = false })
+            ) { backStackEntry ->
+                val email = backStackEntry.arguments?.getString("email")!!
+                AccountDetailsScreen(navController = navController, userEmail = email)
             }
         }
     }

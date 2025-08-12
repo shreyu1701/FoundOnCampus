@@ -10,7 +10,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -25,21 +24,20 @@ import com.project.foundoncampus.views.components.InfoRow
 @Composable
 fun RecentFoundScreen(navController: NavController) {
     val context = LocalContext.current
-    val db = AppDatabase.getInstance(context)
+    val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
 
     var foundItems by remember { mutableStateOf<List<ListingEntity>>(emptyList()) }
     var selectedItem by remember { mutableStateOf<ListingEntity?>(null) }
     var uploaderEmail by remember { mutableStateOf("") }
 
-    // Load items
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
+
     LaunchedEffect(Unit) {
-        scope.launch {
-            foundItems = db.listingDao().getAllByType("Found")
-        }
+        scope.launch { foundItems = db.listingDao().getAllByType("Found") }
     }
 
-    // Load uploader info when selected
     selectedItem?.let { item ->
         LaunchedEffect(item) {
             val user = db.userDao().getUserByEmail(item.userEmail)
@@ -47,16 +45,11 @@ fun RecentFoundScreen(navController: NavController) {
         }
     }
 
-    // Dialog
     if (selectedItem != null) {
         AlertDialog(
             onDismissRequest = { selectedItem = null },
-            confirmButton = {
-                TextButton(onClick = { selectedItem = null }) {
-                    Text("Close")
-                }
-            },
-            title = { Text("Found Item Details") },
+            confirmButton = { TextButton(onClick = { selectedItem = null }) { Text("Close") } },
+            title = { Text("Found Item Details", style = ty.titleMedium) },
             text = {
                 Column(
                     modifier = Modifier
@@ -71,7 +64,7 @@ fun RecentFoundScreen(navController: NavController) {
                             .height(180.dp),
                         contentScale = ContentScale.Crop
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
                     InfoRow("Title", selectedItem!!.title)
                     InfoRow("Description", selectedItem!!.description)
                     InfoRow("Location", selectedItem!!.location)
@@ -85,14 +78,14 @@ fun RecentFoundScreen(navController: NavController) {
         )
     }
 
-    // Main UI
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Recent Found") },
+                title = { Text("Recent Found", color = cs.onPrimary) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Blue,
-                    titleContentColor = Color.White
+                    containerColor = cs.primary,
+                    titleContentColor = cs.onPrimary,
+                    navigationIconContentColor = cs.onPrimary
                 ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -114,7 +107,8 @@ fun RecentFoundScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { selectedItem = item },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+                    colors = CardDefaults.cardColors(containerColor = cs.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Image(
@@ -125,9 +119,9 @@ fun RecentFoundScreen(navController: NavController) {
                                 .fillMaxWidth(),
                             contentScale = ContentScale.Crop
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(item.title, style = MaterialTheme.typography.titleMedium)
-                        Text(item.description, style = MaterialTheme.typography.bodySmall)
+                        Spacer(Modifier.height(8.dp))
+                        Text(item.title, style = ty.titleMedium, color = cs.onSurface)
+                        Text(item.description, style = ty.bodySmall, color = cs.onSurfaceVariant)
                     }
                 }
                 Spacer(Modifier.height(12.dp))

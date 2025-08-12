@@ -9,11 +9,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -45,10 +50,14 @@ fun MyListingScreen(
     val scope = rememberCoroutineScope()
 
     var listings by remember { mutableStateOf(listOf<ListingEntity>()) }
-
     var userEmail by remember { mutableStateOf("") }
-    var showDialog by remember { mutableStateOf(false) }
+
+    // Add/Edit dialog state
+    var showEditor by remember { mutableStateOf(false) }
     var editItem by remember { mutableStateOf<ListingEntity?>(null) }
+
+    // Delete confirmation state
+    var confirmDeleteFor by remember { mutableStateOf<ListingEntity?>(null) }
 
     // Load data from DB
     LaunchedEffect(Unit) {
@@ -65,11 +74,17 @@ fun MyListingScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                editItem = null
-                showDialog = true
-            }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Listing")
+            FloatingActionButton(
+                onClick = {
+                    editItem = null
+                    showEditor = true
+                },
+            ) {
+                Icon(
+                    Icons.Rounded.Add,
+                    contentDescription = "Add Listing",
+                    tint = MaterialTheme.colorScheme.secondary
+                )
             }
         }
     ) { padding ->
@@ -89,24 +104,22 @@ fun MyListingScreen(
                         item = item,
                         onEdit = {
                             editItem = item
-                            showDialog = true
+                            showEditor = true
                         },
                         onDelete = {
-                            scope.launch {
-                                db.listingDao().deleteListing(item)
-                                refreshListings()
-                                Toast.makeText(context, "Deleted!", Toast.LENGTH_SHORT).show()
-                            }
+                            // open confirmation dialog instead of deleting immediately
+                            confirmDeleteFor = item
                         }
                     )
                 }
             }
         }
 
-        if (showDialog) {
+        // Add/Edit dialog
+        if (showEditor) {
             ListingDialog(
                 item = editItem,
-                onDismiss = { showDialog = false },
+                onDismiss = { showEditor = false },
                 onSave = { updated ->
                     scope.launch {
                         withContext(Dispatchers.IO) {
@@ -118,12 +131,42 @@ fun MyListingScreen(
                             refreshListings()
                         }
                     }
-                    showDialog = false
+                    showEditor = false
                 },
                 userEmail = userEmail
             )
         }
+
+        // Delete confirmation dialog
+        val toDelete = confirmDeleteFor
+        if (toDelete != null) {
+            AlertDialog(
+                onDismissRequest = { confirmDeleteFor = null },
+                title = { Text("Delete listing?") },
+                text = {
+                    Text(
+                        "This will permanently delete “${toDelete.title}”. " +
+                                "You can’t undo this action."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    db.listingDao().deleteListing(toDelete)
+                                }
+                                refreshListings()
+                                confirmDeleteFor = null
+                                Toast.makeText(context, "Deleted", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    ) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmDeleteFor = null }) { Text("Cancel") }
+                }
+            )
+        }
     }
 }
-
-

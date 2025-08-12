@@ -13,9 +13,10 @@ import com.project.foundoncampus.utils.Converters
     entities = [
         ListingEntity::class,
         UserEntity::class,
-        ProfileEntity::class
+        ProfileEntity::class,
+        AccountSettingsEntity::class, // ✅ NEW
     ],
-    version = 3,
+    version = 4,                      // ✅ bump
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -24,10 +25,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun listingDao(): ListingDao
     abstract fun userDao(): UserDao
     abstract fun profileDao(): ProfileDao
+    abstract fun accountSettingsDao(): AccountSettingsDao // ✅ NEW
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null
 
+        // keep your existing 2->3 migration
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -44,8 +47,25 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
-                // INTEGER column matches Date? via converter (epoch millis)
                 try { db.execSQL("ALTER TABLE `listings` ADD COLUMN `claimedDate` INTEGER") } catch (_: Throwable) {}
+            }
+        }
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `account_settings` (
+                      `userEmail` TEXT NOT NULL,
+                      `displayName` TEXT,
+                      `emailNotifications` INTEGER NOT NULL,
+                      `pushNotifications` INTEGER NOT NULL,
+                      `darkModeEnabled` INTEGER NOT NULL,
+                      `updatedAt` INTEGER NOT NULL,
+                      PRIMARY KEY(`userEmail`)
+                    )
+                    """.trimIndent()
+                )
             }
         }
 
@@ -56,7 +76,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "found_on_campus_db"
                 )
-                    .addMigrations(MIGRATION_2_3)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4) // ✅ register
                     .build()
                     .also { INSTANCE = it }
             }

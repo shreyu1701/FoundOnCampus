@@ -1,10 +1,7 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.project.foundoncampus.views.screens
 
 import android.app.DatePickerDialog
 import android.widget.Toast
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,7 +31,7 @@ import java.util.*
 @Composable
 fun CreateScreen(navController: NavController) {
     val context = LocalContext.current
-    val db = AppDatabase.getInstance(context)
+    val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
     val sessionManager = remember { SessionManager(context) }
 
@@ -52,27 +48,29 @@ fun CreateScreen(navController: NavController) {
     val calendar = Calendar.getInstance()
     val datePickerDialog = DatePickerDialog(
         context,
-        { _, year, month, day -> date = "$year-${month + 1}-$day" },
+        { _, year, month, day -> date = "%04d-%02d-%02d".format(year, month + 1, day) },
         calendar.get(Calendar.YEAR),
         calendar.get(Calendar.MONTH),
         calendar.get(Calendar.DAY_OF_MONTH)
     )
 
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
+
     Scaffold { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background),
+                .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cs.surface)
             ) {
                 Column(
                     modifier = Modifier
@@ -80,11 +78,13 @@ fun CreateScreen(navController: NavController) {
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Report Item", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))
+                    Text(
+                        "Report Item",
+                        style = ty.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = cs.onSurface
+                    )
 
-                    LabeledRadioGroup("Report", selectedType, listOf("Lost", "Found")) {
-                        selectedType = it
-                    }
+                    LabeledRadioGroup("Report", selectedType, listOf("Lost", "Found")) { selectedType = it }
 
                     CustomDropdown("Category", listOf("Electronics", "Clothing", "Books", "Accessories"), category) {
                         category = it
@@ -105,7 +105,6 @@ fun CreateScreen(navController: NavController) {
                     LabeledMultilineField("Description", itemDescription) { itemDescription = it }
 
                     LabeledDateField("Date", date, onPickDate = { datePickerDialog.show() })
-
 
                     Button(
                         onClick = {
@@ -134,19 +133,14 @@ fun CreateScreen(navController: NavController) {
                                 sendEmailAsync(context, email, item, selectedType, date)
 
                                 // Reset form
-                                listOf(
-                                    { item = "" }, { category = "" }, { campus = "" }, { location = "" },
-                                    { date = "" }, { itemDescription = "" }, { selectedType = "Lost" }, { imageUrl = "" }
-                                ).forEach { it() }
-
+                                item = ""; category = ""; campus = ""; location = ""
+                                date = ""; itemDescription = ""; selectedType = "Lost"; imageUrl = ""
                                 isSending = false
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !isSending
-                    ) {
-                        Text(if (isSending) "Submitting..." else "Submit")
-                    }
+                    ) { Text(if (isSending) "Submitting..." else "Submit") }
                 }
             }
         }
@@ -174,15 +168,20 @@ private suspend fun sendEmailAsync(context: android.content.Context, email: Stri
     }
 }
 
-// ----- Reusable UI Components -----
+// ---- Reusable UI ----
 
 @Composable
 fun LabeledRadioGroup(label: String, selected: String, options: List<String>, onChange: (String) -> Unit) {
+    val ty = MaterialTheme.typography
+    val cs = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("$label:", fontWeight = FontWeight.Bold, modifier = Modifier.width(100.dp))
-        options.forEachIndexed { index, option ->
-            RadioButton(selected = selected == option, onClick = { onChange(option) })
-            Text(option, modifier = Modifier.padding(end = if (index < options.lastIndex) 16.dp else 0.dp))
+        Text("$label:", style = ty.labelLarge, color = cs.onSurface, modifier = Modifier.width(100.dp))
+        options.forEachIndexed { i, option ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RadioButton(selected = selected == option, onClick = { onChange(option) })
+                Text(option, style = ty.bodyMedium, color = cs.onSurface)
+            }
+            if (i < options.lastIndex) Spacer(Modifier.width(16.dp))
         }
     }
 }
@@ -193,24 +192,22 @@ fun LabeledTextField(label: String, value: String, onChange: (String) -> Unit) {
         value = value,
         onValueChange = onChange,
         label = { Text(label) },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true
     )
 }
 
 @Composable
 fun LabeledDateField(label: String, date: String, onPickDate: () -> Unit) {
+    val ty = MaterialTheme.typography
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("$label:", fontWeight = FontWeight.Bold, modifier = Modifier.width(100.dp))
+        Text("$label:", style = ty.labelLarge, modifier = Modifier.width(100.dp))
         OutlinedTextField(
             value = date,
             onValueChange = {},
             readOnly = true,
             modifier = Modifier.fillMaxWidth(),
-            trailingIcon = {
-                IconButton(onClick = onPickDate) {
-                    Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
-                }
-            },
+            trailingIcon = { IconButton(onClick = onPickDate) { Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date") } },
             placeholder = { Text("Select Date") }
         )
     }
@@ -218,8 +215,9 @@ fun LabeledDateField(label: String, date: String, onPickDate: () -> Unit) {
 
 @Composable
 fun LabeledMultilineField(label: String, value: String, onChange: (String) -> Unit) {
+    val ty = MaterialTheme.typography
     Row(verticalAlignment = Alignment.Top) {
-        Text("$label:", fontWeight = FontWeight.Bold, modifier = Modifier.width(100.dp))
+        Text("$label:", style = ty.labelLarge, modifier = Modifier.width(100.dp))
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
@@ -230,6 +228,7 @@ fun LabeledMultilineField(label: String, value: String, onChange: (String) -> Un
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomDropdown(
     label: String,
@@ -239,10 +238,7 @@ fun CustomDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = !expanded }
-    ) {
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
         OutlinedTextField(
             value = selectedOption,
             onValueChange = {},
@@ -251,20 +247,13 @@ fun CustomDropdown(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor() // Needed for ExposedDropdownMenuBox
+                .menuAnchor()
         )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(option) },
-                    onClick = {
-                        onOptionSelected(option)
-                        expanded = false
-                    }
+                    onClick = { onOptionSelected(option); expanded = false }
                 )
             }
         }

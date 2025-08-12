@@ -1,7 +1,6 @@
 package com.project.foundoncampus.views.screens
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -10,18 +9,12 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -35,8 +28,7 @@ import kotlinx.coroutines.withContext
 
 @Composable
 fun ProfileScreen(navController: NavHostController, userEmail: String) {
-    val context = LocalContext.current
-    val db = remember(context) { AppDatabase.getInstance(context) }
+    val db = remember { AppDatabase.getInstance(navController.context) }
 
     var user by remember { mutableStateOf<UserEntity?>(null) }
     var fullName by remember { mutableStateOf("") }
@@ -50,15 +42,12 @@ fun ProfileScreen(navController: NavHostController, userEmail: String) {
     LaunchedEffect(userEmail) {
         withContext(Dispatchers.IO) {
             val u = db.userDao().getUserByEmail(userEmail)
-            val p = db.profileDao().getProfile(userEmail) // profiles keyed by email
+            val p = db.profileDao().getProfile(userEmail)
 
-            val listings = db.listingDao().getAllListings().filter {
-                it.userEmail.equals(userEmail, true)
-            }
+            val listings = db.listingDao().getAllListings().filter { it.userEmail.equals(userEmail, true) }
 
             withContext(Dispatchers.Main) {
                 user = u
-                // Prefer profile values; fallback to UserEntity; final fallback to placeholders
                 fullName = p?.fullName?.takeIf { it.isNotBlank() } ?: (u?.name ?: "Your Name")
                 contactNumber = p?.phone ?: (u?.phone ?: "Not Provided")
                 avatarUrl = p?.avatarUri
@@ -73,7 +62,6 @@ fun ProfileScreen(navController: NavHostController, userEmail: String) {
         }
     }
 
-    // Show once we’ve at least loaded the base user record (or always show)
     ProfileContent(
         profilePictureUrl = avatarUrl
             ?: "https://www.kindpng.com/picc/m/252-2524695_dummy-profile-image-jpg-hd-png-download.png",
@@ -99,7 +87,8 @@ fun ProfileContent(
     reportedCount: Int,
     navController: NavController
 ) {
-    val context = LocalContext.current
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
     var showDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -116,13 +105,13 @@ fun ProfileContent(
                 model = profilePictureUrl,
                 contentDescription = "Profile picture",
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(84.dp)
                     .clip(CircleShape)
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Text(fullName, style = MaterialTheme.typography.titleMedium)
-            Text(email, style = MaterialTheme.typography.bodySmall)
-            Text(contactNumber, style = MaterialTheme.typography.bodySmall)
+            Text(fullName, style = ty.titleMedium, color = cs.onBackground)
+            Text(email, style = ty.bodySmall, color = cs.onSurfaceVariant)
+            Text(contactNumber, style = ty.bodySmall, color = cs.onSurfaceVariant)
         }
 
         Row(
@@ -136,19 +125,15 @@ fun ProfileContent(
 
         Column {
             AccountItem(Icons.Filled.Person, "Profile Details") {
-                navController.navigate(
-                    "${Route.ProfileDetails.routeName}?email=${Uri.encode(email)}"
-                )
+                navController.navigate("${Route.ProfileDetails.routeName}?email=${Uri.encode(email)}")
             }
             AccountItem(Icons.Filled.Menu, "My Listing") {
                 navController.navigate(Route.MyListing.routeName)
             }
             AccountItem(Icons.Filled.AccountBox, "Account Details") {
-                Toast.makeText(context, "Clicked Account Details", Toast.LENGTH_SHORT).show()
+                navController.navigate("${Route.AccountDetails.routeName}?email=${Uri.encode(email)}")
             }
-            AccountItem(Icons.AutoMirrored.Filled.ExitToApp, "Logout") {
-                showDialog = true
-            }
+            AccountItem(Icons.AutoMirrored.Filled.ExitToApp, "Logout") { showDialog = true }
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -163,9 +148,7 @@ fun ProfileContent(
                     navController.navigate(Route.SignIn.routeName)
                 }) { Text("Yes") }
             },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("Cancel") }
-            },
+            dismissButton = { TextButton(onClick = { showDialog = false }) { Text("Cancel") } },
             title = { Text("Confirm Logout") },
             text = { Text("Are you sure you want to logout?") }
         )
@@ -174,22 +157,25 @@ fun ProfileContent(
 
 @Composable
 fun ListingItem(label: String, count: Int) {
+    val ty = MaterialTheme.typography
+    val cs = MaterialTheme.colorScheme
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("$count", fontWeight = FontWeight.Bold)
-        Text(label)
+        Text("$count", style = ty.titleMedium, color = cs.onBackground, fontWeight = FontWeight.Bold)
+        Text(label, style = ty.bodySmall, color = cs.onSurfaceVariant)
     }
 }
 
 @Composable
 fun AccountItem(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val ty = MaterialTheme.typography
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 8.dp)
+            .padding(vertical = 10.dp)
     ) {
-        Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 8.dp))
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        Icon(icon, contentDescription = label, modifier = Modifier.padding(end = 12.dp))
+        Text(text = label, style = ty.bodyLarge)
     }
 }

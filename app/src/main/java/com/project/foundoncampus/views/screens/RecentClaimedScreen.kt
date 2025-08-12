@@ -10,7 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -24,21 +24,20 @@ import kotlinx.coroutines.launch
 @Composable
 fun RecentClaimedScreen(navController: NavController) {
     val context = LocalContext.current
-    val db = AppDatabase.getInstance(context)
+    val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
 
     var claimedItems by remember { mutableStateOf<List<ListingEntity>>(emptyList()) }
     var selectedItem by remember { mutableStateOf<ListingEntity?>(null) }
     var uploaderEmail by remember { mutableStateOf("") }
 
-    // Load claimed items once
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
+
     LaunchedEffect(Unit) {
-        scope.launch {
-            claimedItems = db.listingDao().getAllClaimed()
-        }
+        scope.launch { claimedItems = db.listingDao().getAllClaimed() }
     }
 
-    // When a card is selected, fetch uploader details
     selectedItem?.let { item ->
         LaunchedEffect(item) {
             val user = db.userDao().getUserByEmail(item.userEmail)
@@ -46,16 +45,11 @@ fun RecentClaimedScreen(navController: NavController) {
         }
     }
 
-    // Dialog showing full item details
     if (selectedItem != null) {
         AlertDialog(
             onDismissRequest = { selectedItem = null },
-            confirmButton = {
-                TextButton(onClick = { selectedItem = null }) {
-                    Text("Close")
-                }
-            },
-            title = { Text("Claimed Item Details") },
+            confirmButton = { TextButton(onClick = { selectedItem = null }) { Text("Close") } },
+            title = { Text("Claimed Item Details", style = ty.titleMedium) },
             text = {
                 Column(
                     modifier = Modifier
@@ -67,9 +61,10 @@ fun RecentClaimedScreen(navController: NavController) {
                         contentDescription = "Item Image",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(180.dp)
+                            .height(180.dp),
+                        contentScale = ContentScale.Crop
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
                     InfoRow("Title", selectedItem!!.title)
                     InfoRow("Description", selectedItem!!.description)
                     InfoRow("Location", selectedItem!!.location)
@@ -83,14 +78,14 @@ fun RecentClaimedScreen(navController: NavController) {
         )
     }
 
-    // UI layout
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Recent Claimed") },
+                title = { Text("Recent Claimed", color = cs.onPrimary) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Blue,
-                    titleContentColor = Color.White
+                    containerColor = cs.primary,
+                    titleContentColor = cs.onPrimary,
+                    navigationIconContentColor = cs.onPrimary
                 ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -112,7 +107,8 @@ fun RecentClaimedScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { selectedItem = item },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
+                    colors = CardDefaults.cardColors(containerColor = cs.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Image(
@@ -120,11 +116,12 @@ fun RecentClaimedScreen(navController: NavController) {
                             contentDescription = null,
                             modifier = Modifier
                                 .height(180.dp)
-                                .fillMaxWidth()
+                                .fillMaxWidth(),
+                            contentScale = ContentScale.Crop
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(item.title, style = MaterialTheme.typography.titleMedium)
-                        Text(item.description, style = MaterialTheme.typography.bodySmall)
+                        Spacer(Modifier.height(8.dp))
+                        Text(item.title, style = ty.titleMedium, color = cs.onSurface)
+                        Text(item.description, style = ty.bodySmall, color = cs.onSurfaceVariant)
                     }
                 }
                 Spacer(Modifier.height(12.dp))

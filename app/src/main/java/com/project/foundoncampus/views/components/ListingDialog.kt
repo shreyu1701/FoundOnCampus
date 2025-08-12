@@ -5,6 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.project.foundoncampus.model.ListingEntity
 import java.text.SimpleDateFormat
@@ -17,6 +18,8 @@ fun ListingDialog(
     onDismiss: () -> Unit,
     onSave: (ListingEntity) -> Unit
 ) {
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
     val dateNow = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
     var title by rememberSaveable { mutableStateOf(item?.title ?: "") }
@@ -30,26 +33,37 @@ fun ListingDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (item == null) "Add Listing" else "Edit Listing") },
+        title = {
+            Text(
+                if (item == null) "Add Listing" else "Edit Listing",
+                style = ty.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = cs.primary
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
                     label = { Text("Title") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = ty.bodyLarge
                 )
+
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Description") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = ty.bodyLarge
                 )
+
                 OutlinedTextField(
                     value = contact,
                     onValueChange = { contact = it },
                     label = { Text("Contact Info") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = ty.bodyLarge
                 )
 
                 CustomDropdown(
@@ -58,28 +72,24 @@ fun ListingDialog(
                     selectedOption = type,
                     onOptionSelected = { type = it }
                 )
-
                 CustomDropdown(
                     label = "Category",
                     options = listOf("Electronics", "Clothing", "Books", "Accessories"),
                     selectedOption = category,
                     onOptionSelected = { category = it }
                 )
-
                 CustomDropdown(
                     label = "Campus",
                     options = listOf("IGS Campus", "North Campus", "Lakeshore Campus"),
                     selectedOption = campus,
                     onOptionSelected = { campus = it }
                 )
-
                 CustomDropdown(
                     label = "Location",
                     options = listOf("Library", "Cafeteria", "Auditorium", "Hostel"),
                     selectedOption = location,
                     onOptionSelected = { location = it }
                 )
-
                 CustomDropdown(
                     label = "Status",
                     options = listOf("Pending", "Resolved", "Claimed"),
@@ -89,42 +99,46 @@ fun ListingDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                if (title.isNotBlank() && description.isNotBlank()) {
+            Button(
+                onClick = {
+                    if (title.isBlank() || description.isBlank()) return@Button
                     val updatedListing = item?.copy(
-                        title = title,
-                        description = description,
-                        contact = contact,
+                        title = title.trim(),
+                        description = description.trim(),
+                        contact = contact.trim(),
                         type = type,
                         category = category,
                         campus = campus,
                         location = location,
                         status = status
-                        // imageUrl & claimedDate remain whatever `item` had
                     ) ?: ListingEntity(
                         id = 0,
-                        title = title,
-                        description = description,
+                        title = title.trim(),
+                        description = description.trim(),
                         category = category,
                         type = type,
                         date = dateNow,
                         campus = campus,
                         location = location,
                         status = status,
-                        contact = contact,
+                        contact = contact.trim(),
                         userEmail = userEmail,
                         imageUrl = null,
                         claimedDate = null
                     )
                     onSave(updatedListing)
-                }
-            }) {
-                Text("Save")
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = cs.primary,
+                    contentColor = cs.onPrimary
+                )
+            ) {
+                Text("Save", style = ty.labelLarge)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = cs.secondary)) {
+                Text("Cancel", style = ty.labelLarge)
             }
         },
         modifier = Modifier.fillMaxWidth()
@@ -139,6 +153,7 @@ fun CustomDropdown(
     selectedOption: String,
     onOptionSelected: (String) -> Unit
 ) {
+    val cs = MaterialTheme.colorScheme
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
@@ -165,10 +180,12 @@ fun CustomDropdown(
                     onClick = {
                         onOptionSelected(option)
                         expanded = false
-                    }
+                    },
+                    colors = MenuDefaults.itemColors(
+                        textColor = cs.onSurface
+                    )
                 )
             }
         }
     }
 }
-

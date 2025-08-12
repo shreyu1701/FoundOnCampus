@@ -16,29 +16,28 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.project.foundoncampus.BuildConfig
 import com.project.foundoncampus.model.AppDatabase
@@ -50,7 +49,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.mail.MessagingException
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(navController: NavController) {
@@ -58,21 +56,26 @@ fun SignUpScreen(navController: NavController) {
     val scope = rememberCoroutineScope()
     val db = AppDatabase.getInstance(context)
 
-    var name by remember { mutableStateOf("") }
-    var humberId by remember { mutableStateOf("") }
-    var phoneNumber by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
+    // Inputs
+    var name by rememberSaveable { mutableStateOf("") }
+    var humberId by rememberSaveable { mutableStateOf("") }
+    var phoneNumber by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
 
-    var nameError by remember { mutableStateOf(false) }
-    var humberIdError by remember { mutableStateOf(false) }
-    var phoneNumberError by remember { mutableStateOf(false) }
-    var emailError by remember { mutableStateOf(false) }
-    var passwordError by remember { mutableStateOf(false) }
-    var confirmPasswordError by remember { mutableStateOf(false) }
+    // Errors
+    var nameError by rememberSaveable { mutableStateOf(false) }
+    var humberIdError by rememberSaveable { mutableStateOf(false) }
+    var phoneNumberError by rememberSaveable { mutableStateOf(false) }
+    var emailError by rememberSaveable { mutableStateOf(false) }
+    var passwordError by rememberSaveable { mutableStateOf(false) }
+    var confirmPasswordError by rememberSaveable { mutableStateOf(false) }
+
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
 
     Scaffold { padding ->
         Box(
@@ -84,44 +87,137 @@ fun SignUpScreen(navController: NavController) {
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                elevation = CardDefaults.cardElevation(8.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = cs.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(16.dp)
+                        .padding(20.dp)
                         .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Sign Up", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterHorizontally))
-
-                    LabeledTextField("Name:", name, { name = it }, nameError, "Name is required")
-                    LabeledTextField("Humber ID:", humberId, { humberId = it }, humberIdError, "Humber ID must start with n or N and have 8 digits")
-                    LabeledTextField("Phone Number:", phoneNumber, { phoneNumber = it }, phoneNumberError, "Phone number must be exactly 10 digits")
-                    LabeledTextField("Humber Email ID:", email, { email = it }, emailError, "Email must be your Humber ID + @humber.ca")
-
-                    PasswordField(
-                        label = "Password:",
-                        value = password,
-                        visible = passwordVisible,
-                        onValueChange = { password = it },
-                        onVisibilityToggle = { passwordVisible = !passwordVisible },
-                        isError = passwordError,
-                        errorMessage = "Password must have 1 capital, 1 special, 1 number, min 8 chars"
+                    Text(
+                        "Create Account",
+                        style = ty.titleLarge,
+                        color = cs.onSurface,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
                     )
 
-                    PasswordField(
-                        label = "Confirm Password:",
+                    // Name
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it; nameError = false },
+                        label = { Text("Name") },
+                        isError = nameError,
+                        supportingText = {
+                            if (nameError) Text("Name is required", color = cs.error, style = ty.bodySmall)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Humber ID
+                    OutlinedTextField(
+                        value = humberId,
+                        onValueChange = {
+                            humberId = it
+                            humberIdError = false
+                        },
+                        label = { Text("Humber ID (e.g., n12345678)") },
+                        isError = humberIdError,
+                        supportingText = {
+                            if (humberIdError) Text("Humber ID must start with n/N + 8 digits", color = cs.error, style = ty.bodySmall)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Phone Number
+                    OutlinedTextField(
+                        value = phoneNumber,
+                        onValueChange = {
+                            phoneNumber = it
+                            phoneNumberError = false
+                        },
+                        label = { Text("Phone number (10 digits)") },
+                        isError = phoneNumberError,
+                        supportingText = {
+                            if (phoneNumberError) Text("Phone number must be 10 digits", color = cs.error, style = ty.bodySmall)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Humber Email
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = {
+                            email = it
+                            emailError = false
+                        },
+                        label = { Text("Humber email (yourID@humber.ca)") },
+                        isError = emailError,
+                        supportingText = {
+                            if (emailError) Text("Email must be your Humber ID + @humber.ca", color = cs.error, style = ty.bodySmall)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Password
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = {
+                            password = it
+                            passwordError = false
+                        },
+                        label = { Text("Password") },
+                        isError = passwordError,
+                        supportingText = {
+                            if (passwordError) Text("Must have 1 capital, 1 special, 1 number, min 8 chars", color = cs.error, style = ty.bodySmall)
+                        },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = "Toggle Password Visibility",
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Confirm Password
+                    OutlinedTextField(
                         value = confirmPassword,
-                        visible = confirmPasswordVisible,
-                        onValueChange = { confirmPassword = it },
-                        onVisibilityToggle = { confirmPasswordVisible = !confirmPasswordVisible },
+                        onValueChange = {
+                            confirmPassword = it
+                            confirmPasswordError = false
+                        },
+                        label = { Text("Confirm password") },
                         isError = confirmPasswordError,
-                        errorMessage = "Passwords do not match"
+                        supportingText = {
+                            if (confirmPasswordError) Text("Passwords do not match", color = cs.error, style = ty.bodySmall)
+                        },
+                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (confirmPasswordVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                                    contentDescription = "Toggle Password Visibility",
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
 
                     Button(
                         onClick = {
+                            // Validate
                             nameError = name.isBlank()
                             humberIdError = !humberId.matches(Regex("^[nN]\\d{8}$"))
                             phoneNumberError = phoneNumber.isNotBlank() && !phoneNumber.matches(Regex("^\\d{10}$"))
@@ -150,31 +246,15 @@ fun SignUpScreen(navController: NavController) {
                                                 user = BuildConfig.EMAIL_USER,
                                                 password = BuildConfig.EMAIL_PASS
                                             )
-
                                             withContext(Dispatchers.IO) {
-                                                val sent = sender.sendEmail(
+                                                sender.sendEmail(
                                                     to = email,
                                                     subject = "Welcome to FoundOnCampus!",
-                                                    body = """
-                                    Hi $name,
-
-                                    Thank you for registering at FoundOnCampus.
-
-                                    You can now sign in using your Humber ID.
-
-                                    — FoundOnCampus Team
-                                """.trimIndent()
+                                                    body = "Hi $name,\n\nThank you for registering at FoundOnCampus."
                                                 )
-
-                                                withContext(Dispatchers.Main) {
-                                                    if (sent) {
-                                                        Toast.makeText(context, "Registered", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                }
                                             }
-                                        } catch (e: MessagingException) {
-                                            println("Email sending failed: ${e.message}")
-                                            e.printStackTrace()
+                                        } catch (_: MessagingException) {
+                                            // ignore email issues in UI flow
                                         }
 
                                         navController.navigate(Route.SignIn.routeName)
@@ -184,17 +264,22 @@ fun SignUpScreen(navController: NavController) {
                                 Toast.makeText(context, "Please fill the data correctly", Toast.LENGTH_LONG).show()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = cs.primary,
+                            contentColor = cs.onPrimary
+                        )
                     ) {
-                        Text("Submit")
+                        Text("Submit", style = ty.labelLarge)
                     }
 
                     Row(modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                        Text("Already have an account?")
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Already have an account?", style = ty.bodyMedium, color = cs.onSurface)
+                        Spacer(Modifier.width(6.dp))
                         Text(
                             "Sign in",
-                            color = Color.Blue,
+                            style = ty.labelLarge,
+                            color = cs.secondary,
                             modifier = Modifier.clickable {
                                 navController.navigate(Route.SignIn.routeName)
                             }
@@ -202,89 +287,6 @@ fun SignUpScreen(navController: NavController) {
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun LabeledTextField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    isError: Boolean,
-    errorMessage: String
-) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                label,
-                modifier = Modifier.width(130.dp),
-                fontWeight = FontWeight.Bold
-            )
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.fillMaxWidth(),
-                isError = isError,
-                singleLine = true
-            )
-        }
-        if (isError) {
-            Text(
-                text = errorMessage,
-                color = Color.Red,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 130.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun PasswordField(
-    label: String,
-    value: String,
-    visible: Boolean,
-    onValueChange: (String) -> Unit,
-    onVisibilityToggle: () -> Unit,
-    isError: Boolean,
-    errorMessage: String
-) {
-    Column {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                label,
-                modifier = Modifier.width(130.dp),
-                fontWeight = FontWeight.Bold
-            )
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = onVisibilityToggle) {
-                        Icon(
-                            imageVector = if (visible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                            contentDescription = "Toggle Password Visibility"
-                        )
-                    }
-                },
-                isError = isError,
-                singleLine = true
-            )
-        }
-        if (isError) {
-            Text(
-                text = errorMessage,
-                color = Color.Red,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 130.dp)
-            )
         }
     }
 }

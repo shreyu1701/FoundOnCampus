@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
@@ -38,55 +37,72 @@ fun SignInScreen(navController: NavController) {
     val sessionManager = remember { SessionManager(context) }
     val scope = rememberCoroutineScope()
 
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
+
     Scaffold { padding ->
         Box(
             modifier = Modifier
                 .padding(padding)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Card wrapper
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
-                    .padding(vertical = 32.dp),
-                elevation = CardDefaults.cardElevation(8.dp)
+                    .wrapContentHeight(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = cs.surface)
             ) {
                 Column(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth()
+                    modifier = Modifier.padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "Sign In",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                        text = "Welcome back",
+                        style = ty.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = cs.onSurface
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Sign in to continue",
+                        style = ty.bodyMedium,
+                        color = cs.onSurface.copy(alpha = 0.75f)
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(Modifier.height(24.dp))
 
-                    // Email Field
+                    // Email
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
+                        singleLine = true,
                         label = { Text("Humber Email") },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next
+                        ),
+                        isError = isSubmitted && email.isBlank(),
                         modifier = Modifier.fillMaxWidth(),
-                        isError = isSubmitted && email.isBlank()
+                        supportingText = {
+                            if (isSubmitted && email.isBlank()) {
+                                Text(
+                                    "Please enter your email",
+                                    style = ty.bodySmall,
+                                    color = cs.error
+                                )
+                            }
+                        }
                     )
 
-                    // Email Error Message
-                    if (isSubmitted && email.isBlank()) {
-                        Text("Please fill in the email", color = Color.Red, style = MaterialTheme.typography.bodySmall)
-                    }
+                    Spacer(Modifier.height(12.dp))
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Password Field
+                    // Password
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
+                        singleLine = true,
                         label = { Text("Password") },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
@@ -97,59 +113,74 @@ fun SignInScreen(navController: NavController) {
                                 )
                             }
                         },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password,
+                            imeAction = ImeAction.Done
+                        ),
+                        isError = isSubmitted && password.isBlank(),
                         modifier = Modifier.fillMaxWidth(),
-                        isError = isSubmitted && password.isBlank()
+                        supportingText = {
+                            if (isSubmitted && password.isBlank()) {
+                                Text(
+                                    "Password is required",
+                                    style = ty.bodySmall,
+                                    color = cs.error
+                                )
+                            }
+                        }
                     )
 
-                    // Password Error Message
-                    if (isSubmitted && password.isBlank()) {
-                        Text("Please fill in the password", color = Color.Red, style = MaterialTheme.typography.bodySmall)
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(Modifier.height(20.dp))
 
                     Button(
                         onClick = {
-                            isSubmitted = true // Mark form as submitted
-
-                            // Check if email and password fields are filled
+                            isSubmitted = true
                             if (email.isBlank() || password.isBlank()) {
-                                Toast.makeText(context, "Please fill the Email ID & Password", Toast.LENGTH_SHORT).show()
-                            } else {
-                                scope.launch {
-                                    val user: UserEntity? = withContext(Dispatchers.IO) {
-                                        db.userDao().login(email.trim(), password)
-                                    }
+                                Toast.makeText(
+                                    context,
+                                    "Please fill the Email & Password",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                return@Button
+                            }
 
-                                    if (user == null) {
-                                        Toast.makeText(context, "Invalid email or password", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        // ✅ Save session
-                                        sessionManager.saveUserEmail(user.email)
+                            scope.launch {
+                                val user: UserEntity? = withContext(Dispatchers.IO) {
+                                    db.userDao().login(email.trim(), password)
+                                }
 
-                                        Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
-
-                                        navController.navigate(Route.Main.routeName) {
-                                            popUpTo(Route.Auth.routeName) { inclusive = true }
-                                        }
+                                if (user == null) {
+                                    Toast.makeText(
+                                        context,
+                                        "Invalid email or password",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    sessionManager.saveUserEmail(user.email)
+                                    Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
+                                    navController.navigate(Route.Main.routeName) {
+                                        popUpTo(Route.Auth.routeName) { inclusive = true }
                                     }
                                 }
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = cs.primary,
+                            contentColor = cs.onPrimary
+                        )
                     ) {
-                        Text("Submit")
+                        Text("Sign In", style = ty.labelLarge)
                     }
 
                     TextButton(
-                        onClick = {
-                            navController.navigate(Route.SignUp.routeName) {}
-                        }
+                        onClick = { navController.navigate(Route.SignUp.routeName) },
+                        modifier = Modifier.padding(top = 6.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = cs.secondary)
                     ) {
-                        Text(
-                            "Don't Have An Account?"
-                        )
+                        Text("Don't have an account? Create one", style = ty.labelLarge)
                     }
                 }
             }

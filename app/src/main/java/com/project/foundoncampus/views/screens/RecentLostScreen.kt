@@ -10,7 +10,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -25,21 +24,20 @@ import kotlinx.coroutines.launch
 @Composable
 fun RecentLostScreen(navController: NavController) {
     val context = LocalContext.current
-    val db = AppDatabase.getInstance(context)
+    val db = remember { AppDatabase.getInstance(context) }
     val scope = rememberCoroutineScope()
 
     var lostItems by remember { mutableStateOf<List<ListingEntity>>(emptyList()) }
     var selectedItem by remember { mutableStateOf<ListingEntity?>(null) }
     var uploaderEmail by remember { mutableStateOf("") }
 
-    // Fetch Lost listings
+    val cs = MaterialTheme.colorScheme
+    val ty = MaterialTheme.typography
+
     LaunchedEffect(Unit) {
-        scope.launch {
-            lostItems = db.listingDao().getAllByType("Lost")
-        }
+        scope.launch { lostItems = db.listingDao().getAllByType("Lost") }
     }
 
-    // Fetch uploader info when card clicked
     selectedItem?.let { item ->
         LaunchedEffect(item) {
             val user = db.userDao().getUserByEmail(item.userEmail)
@@ -47,16 +45,11 @@ fun RecentLostScreen(navController: NavController) {
         }
     }
 
-    // Show item detail dialog
     if (selectedItem != null) {
         AlertDialog(
             onDismissRequest = { selectedItem = null },
-            confirmButton = {
-                TextButton(onClick = { selectedItem = null }) {
-                    Text("Close")
-                }
-            },
-            title = { Text("Lost Item Details") },
+            confirmButton = { TextButton(onClick = { selectedItem = null }) { Text("Close") } },
+            title = { Text("Lost Item Details", style = ty.titleMedium) },
             text = {
                 Column(
                     modifier = Modifier
@@ -71,7 +64,7 @@ fun RecentLostScreen(navController: NavController) {
                             .height(180.dp),
                         contentScale = ContentScale.Crop
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
                     InfoRow("Title", selectedItem!!.title)
                     InfoRow("Description", selectedItem!!.description)
                     InfoRow("Location", selectedItem!!.location)
@@ -85,14 +78,13 @@ fun RecentLostScreen(navController: NavController) {
         )
     }
 
-    // Lost Items UI List
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Recent Lost") },
+                title = { Text("Recent Lost", color = cs.onPrimary) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Blue,
-                    titleContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -114,7 +106,8 @@ fun RecentLostScreen(navController: NavController) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { selectedItem = item },
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+                    colors = CardDefaults.cardColors(containerColor = cs.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
                     Column(Modifier.padding(16.dp)) {
                         Image(
@@ -125,9 +118,9 @@ fun RecentLostScreen(navController: NavController) {
                                 .fillMaxWidth(),
                             contentScale = ContentScale.Crop
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(item.title, style = MaterialTheme.typography.titleMedium)
-                        Text(item.description, style = MaterialTheme.typography.bodySmall)
+                        Spacer(Modifier.height(8.dp))
+                        Text(item.title, style = ty.titleMedium, color = cs.onSurface)
+                        Text(item.description, style = ty.bodySmall, color = cs.onSurfaceVariant)
                     }
                 }
                 Spacer(Modifier.height(12.dp))
