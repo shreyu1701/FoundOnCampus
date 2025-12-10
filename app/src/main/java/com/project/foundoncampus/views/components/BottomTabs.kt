@@ -1,76 +1,40 @@
 package com.project.foundoncampus.views.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import com.project.foundoncampus.nav.Route
-
-data class BottomTabItem(
-    val baseRoute: String,   // Used for selection match
-    val actualRoute: Route,  // Route object
-    val icon: ImageVector,
-    val label: String
-)
-
-private val bottomTabs = listOf(
-    BottomTabItem(Route.Home.routeName, Route.Home, Icons.Filled.Home, "Home"),
-    BottomTabItem(Route.Search.routeName, Route.Search, Icons.Filled.Search, "Search"),
-    BottomTabItem(Route.Create.routeName, Route.Create, Icons.Filled.Add, "Create"),
-    BottomTabItem(Route.History.routeName, Route.History, Icons.Filled.Menu, "History"),
-    // Profile uses an email-parameterized route; match on base "profile"
-    BottomTabItem("profile", Route.Profile, Icons.Filled.Person, "Profile")
-)
 
 @Composable
 fun BottomTabsBar(
     selectedRoute: String,
     onNavigate: (String) -> Unit,
-    currentUserEmail: String,
-    modifier: Modifier = Modifier // <-- allow offset/animation from Scaffold
+    currentUserEmail: String
 ) {
-    val cs = MaterialTheme.colorScheme
+    val bottomItems = listOf(
+        BottomNavItem("Home", Route.Home.routeName, Icons.Default.Home),
+        BottomNavItem("Search", Route.Search.routeName, Icons.Default.Search),
+        BottomNavItem("Create", Route.Create.routeName, Icons.Default.Add),
+        BottomNavItem("History", Route.History.routeName, Icons.Default.History),
+        BottomNavItem("Group Chat", "group_chat", Icons.Default.Chat) // ✅ UPDATED
+    )
 
-    NavigationBar(
-        modifier = modifier,
-        containerColor = cs.surface,
-        contentColor = cs.onSurface,
-        tonalElevation = 3.dp
-    ) {
-        bottomTabs.forEach { tab ->
-            val destinationRoute =
-                if (tab.actualRoute.routeName == Route.Profile.routeName) {
-                    "profile/$currentUserEmail"
-                } else {
-                    tab.actualRoute.routeName
-                }
-
+    NavigationBar {
+        bottomItems.forEach { item ->
             NavigationBarItem(
-                selected = selectedRoute.startsWith(tab.baseRoute),
-                onClick = { onNavigate(destinationRoute) },
-                icon = { Icon(tab.icon, contentDescription = tab.label) },
-                label = { Text(tab.label) },
-                alwaysShowLabel = true,
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = cs.onPrimary,
-                    selectedTextColor = cs.secondary,
-                    indicatorColor = cs.primary,
-                    unselectedIconColor = cs.onSurfaceVariant,
-                    unselectedTextColor = cs.onSurfaceVariant
-                )
+                selected = selectedRoute == item.route,
+                onClick = { onNavigate(item.route) },
+                icon = { Icon(item.icon, contentDescription = item.label) },
+                label = { Text(item.label) }
             )
         }
     }
 }
+
+data class BottomNavItem(
+    val label: String,
+    val route: String,
+    val icon: ImageVector
+)

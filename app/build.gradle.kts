@@ -110,6 +110,20 @@ dependencies {
 
     // Firebase (optional)
     implementation("com.google.firebase:firebase-analytics-ktx:21.6.1")
+    // Firebase BoM for consistent versions
+    implementation(platform("com.google.firebase:firebase-bom:32.7.2"))
+
+// Add Firebase modules you plan to use:
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-database") // for Realtime DB
+// OR
+    implementation("com.google.firebase:firebase-firestore") // if you prefer Firestore
+    implementation ("com.google.firebase:firebase-firestore-ktx")
+
+    implementation("androidx.compose.material3:material3:1.2.0")
+
+
+
 
     // Testing
     testImplementation("junit:junit:4.13.2")

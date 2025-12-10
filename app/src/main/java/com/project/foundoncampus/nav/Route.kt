@@ -18,6 +18,13 @@ sealed class Route(val routeName: String) {
     object RecentLost : Route("recentlost")
     object RecentClaimed : Route("recentclaimed")
     object RecentFound : Route("recentfound")
+    object Chat {
+        const val routeName = "chat/{user}"
+        fun createRoute(userEmail: String) = "chat/$userEmail"
+    }
+    object Contact {
+        const val routeName = "contact"
+    }
     object Profile : Route("profile/{userEmail}") {
         fun createRoute(userEmail: String): String = "profile/$userEmail"
     }

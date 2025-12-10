@@ -20,10 +20,12 @@ import androidx.core.splashscreen.SplashScreen
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.project.foundoncampus.views.screens.MainScreen
 import androidx.core.graphics.toColorInt
+import com.google.firebase.FirebaseApp
 
 class MainActivity : ComponentActivity() {
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
+        FirebaseApp.initializeApp(this)
         val splash: SplashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= 31) {

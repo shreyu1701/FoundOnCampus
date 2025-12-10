@@ -1,5 +1,6 @@
 package com.project.foundoncampus.views.screens
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -24,22 +25,19 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.project.foundoncampus.model.AppDatabase
-import com.project.foundoncampus.model.UserEntity
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.project.foundoncampus.nav.Route
 import com.project.foundoncampus.util.SessionManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignInScreen(navController: NavController) {
     val context = LocalContext.current
-    val db = remember { AppDatabase.getInstance(context) }
     val session = remember { SessionManager(context) }
-    val scope = rememberCoroutineScope()
     val focus = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -147,20 +145,38 @@ fun SignInScreen(navController: NavController) {
 
                             loading = true
                             scope.launch {
-                                val user: UserEntity? = withContext(Dispatchers.IO) {
-                                    db.userDao().login(email.trim(), password)
-                                }
-                                loading = false
-                                if (user == null) {
-                                    Toast.makeText(context, "Invalid email or password", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    session.saveUserEmail(user.email)
-                                    Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
-                                    navController.navigate(Route.Main.routeName) {
-                                        popUpTo(Route.Auth.routeName) { inclusive = true }
+                                FirebaseAuth.getInstance()
+                                    .signInWithEmailAndPassword(email.trim(), password.trim())
+                                    .addOnCompleteListener { task ->
+                                        loading = false
+                                        if (task.isSuccessful) {
+                                            val user = FirebaseAuth.getInstance().currentUser
+                                            if (user != null /* && user.isEmailVerified */) {
+                                                scope.launch {
+                                                    session.saveUserEmail(email.trim())
+                                                }
+
+                                                FirebaseFirestore.getInstance()
+                                                    .collection("users")
+                                                    .document(email.trim())
+                                                    .get()
+                                                    .addOnSuccessListener {
+                                                        Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
+                                                        navController.navigate(Route.Main.routeName) {
+                                                            popUpTo(Route.Auth.routeName) { inclusive = true }
+                                                        }
+                                                    }
+                                            } else {
+                                                Toast.makeText(context, "Please verify your email", Toast.LENGTH_LONG).show()
+                                            }
+                                        } else {
+                                            val errorMessage = task.exception?.localizedMessage ?: "Unknown error"
+                                            Log.e("FIREBASE_LOGIN", "Login failed: $errorMessage")
+                                            Toast.makeText(context, "Invalid email or password", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
-                                }
                             }
+
                         },
                         enabled = isValid && !loading,
                         modifier = Modifier
