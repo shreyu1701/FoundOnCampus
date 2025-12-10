@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
+import com.project.foundoncampus.views.profile.ProfileDetailsScreen
 import com.project.foundoncampus.views.screens.*
 
 @Composable
@@ -58,7 +59,7 @@ fun NavGraph(navController: NavHostController, startDestination: String = Route.
                 arguments = listOf(navArgument("email") { type = NavType.StringType; nullable = false })
             ) { backStackEntry ->
                 val email = backStackEntry.arguments?.getString("email")!!
-                ProfileDetailsScreen(navController = navController, userEmail = email)
+                ProfileDetailsScreen(navController = navController)
             }
 
             composable(

@@ -1,5 +1,6 @@
 package com.project.foundoncampus.utils
 
+import android.util.Log
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.*
 
@@ -10,8 +11,13 @@ fun sendMessage(db: FirebaseFirestore, senderEmail: String, message: String) {
         "timestamp" to Date()
     )
 
-    db.collection("group_chat") // ✅ fixed collection name
+    db.collection("group_chat")
         .add(newMessage)
-        .addOnSuccessListener { /* You can log or show toast */ }
-        .addOnFailureListener { e -> e.printStackTrace() }
+        .addOnSuccessListener {
+            Log.d("FIREBASE_CHAT", "Message sent successfully")
+        }
+        .addOnFailureListener { e ->
+            Log.e("FIREBASE_CHAT", "Failed to send message: ${e.message}")
+            e.printStackTrace()
+        }
 }

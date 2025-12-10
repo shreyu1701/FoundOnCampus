@@ -1,4 +1,4 @@
-package com.project.foundoncampus.views.screens
+package com.project.foundoncampus.views.profile
 
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -9,7 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,242 +21,162 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.project.foundoncampus.model.AppDatabase
-import com.project.foundoncampus.model.ProfileEntity
-import com.project.foundoncampus.model.UserEntity
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.google.firebase.auth.FirebaseAuth
+import com.project.foundoncampus.nav.Route
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileDetailsScreen(
-    navController: NavController,
-    userEmail: String
-) {
-    val context = LocalContext.current
-    val db = remember { AppDatabase.getInstance(context) }
-    val scope = rememberCoroutineScope()
+fun ProfileDetailsScreen(navController: NavController) {
 
-    var user by remember { mutableStateOf<UserEntity?>(null) }
-    var existing by remember { mutableStateOf<ProfileEntity?>(null) }
+    val auth = FirebaseAuth.getInstance()
+    val firebaseUser = auth.currentUser
 
-    var fullName by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var avatarUri by remember { mutableStateOf<String?>(null) }
+    // Local editable states
+    var fullName by remember { mutableStateOf(firebaseUser?.displayName ?: "") }
+    var email by remember { mutableStateOf(firebaseUser?.email ?: "") }
+    var phone by remember { mutableStateOf("") } // Firebase does not store phone unless manually added.
+    var avatarUri by remember { mutableStateOf(firebaseUser?.photoUrl?.toString()) }
 
-    var loading by remember { mutableStateOf(true) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var savedOnce by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
+    var savedStatus by remember { mutableStateOf(false) }
 
-    // Use OpenDocument so we can persist URI read permission across restarts
+    // Image picker launcher
+    val context = LocalContext.current
     val pickImage = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (isEditing && uri != null) {
-            // Persist read access across app restarts
             try {
                 context.contentResolver.takePersistableUriPermission(
                     uri,
                     Intent.FLAG_GRANT_READ_URI_PERMISSION
                 )
-            } catch (_: SecurityException) {
-                // Ignore if already persisted or not needed
-            }
+            } catch (_: SecurityException) {}
+
             avatarUri = uri.toString()
-            savedOnce = false
+            savedStatus = false
         }
     }
 
-    LaunchedEffect(userEmail) {
-        loading = true
-        withContext(Dispatchers.IO) {
-            val u = db.userDao().getUserByEmail(userEmail)
-            val p = db.profileDao().getProfile(userEmail)
-            withContext(Dispatchers.Main) {
-                user = u
-                existing = p
-                fullName = p?.fullName ?: (u?.name ?: "")
-                phone = p?.phone ?: (u?.phone ?: "")
-                avatarUri = p?.avatarUri
-                loading = false
-            }
-        }
-    }
-
-    fun save() {
-        if (fullName.isBlank()) { error = "Full name is required"; return }
-        val digits = phone.filter { it.isDigit() }
-        if (phone.isNotBlank() && digits.length !in 7..15) { error = "Invalid phone number"; return }
-        error = null
-
-        val preservedStudentId = existing?.studentId
-        val preservedDepartment = existing?.department
-
-        scope.launch(Dispatchers.IO) {
-            db.profileDao().upsert(
-                ProfileEntity(
-                    userId = userEmail,
-                    fullName = fullName.trim(),
-                    phone = phone.ifBlank { null },
-                    studentId = preservedStudentId,
-                    department = preservedDepartment,
-                    avatarUri = avatarUri,
-                    updatedAt = System.currentTimeMillis()
-                )
-            )
-            withContext(Dispatchers.Main) {
-                savedOnce = true
-                isEditing = false
-                existing = existing?.copy(
-                    fullName = fullName.trim(),
-                    phone = phone.ifBlank { null },
-                    avatarUri = avatarUri,
-                    updatedAt = System.currentTimeMillis()
-                ) ?: ProfileEntity(
-                    userId = userEmail,
-                    fullName = fullName.trim(),
-                    phone = phone.ifBlank { null },
-                    studentId = preservedStudentId,
-                    department = preservedDepartment,
-                    avatarUri = avatarUri,
-                    updatedAt = System.currentTimeMillis()
-                )
-            }
-        }
-    }
-
-    fun cancelEdit() {
-        fullName = existing?.fullName ?: (user?.name ?: "")
-        phone = existing?.phone ?: (user?.phone ?: "")
-        avatarUri = existing?.avatarUri
-        error = null
-        isEditing = false
-    }
-
+    // TOP BAR
     Scaffold(
         topBar = {
             TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
                 title = { Text("Profile Details") },
                 actions = {
-                    if (!loading) {
-                        if (isEditing) {
-                            TextButton(onClick = ::cancelEdit) { Text("Cancel") }
-                            TextButton(onClick = ::save) { Text("Save") }
-                        } else {
-                            TextButton(onClick = { isEditing = true; savedOnce = false }) { Text("Edit") }
-                        }
+                    // EDIT / SAVE buttons
+                    if (isEditing) {
+                        TextButton(onClick = {
+                            savedStatus = true
+                            isEditing = false
+                        }) { Text("Save") }
+                    } else {
+                        TextButton(onClick = { isEditing = true }) { Text("Edit") }
                     }
+
+                    // LOGOUT
+                    TextButton(
+                        onClick = {
+                            auth.signOut()
+                            navController.navigate(Route.SignIn.routeName) {
+                                popUpTo(Route.Home.routeName) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    ) { Text("Logout") }
                 }
             )
         }
-    ) { inner ->
-        if (loading) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(inner),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+    ) { padding ->
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+
+            // ---------------------------
+            // PROFILE IMAGE
+            // ---------------------------
+            Row(verticalAlignment = Alignment.CenterVertically) {
+
+                val imageModifier = Modifier
+                    .size(90.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(enabled = isEditing) {
+                        pickImage.launch(arrayOf("image/*"))
+                    }
+
+                Box(
+                    modifier = imageModifier,
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (avatarUri != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(avatarUri),
+                            contentDescription = "Profile Photo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Text("No\nPhoto", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
+                Spacer(Modifier.width(20.dp))
+
+                Column {
+                    if (isEditing) {
+                        OutlinedTextField(
+                            value = fullName,
+                            onValueChange = {
+                                fullName = it
+                                savedStatus = false
+                            },
+                            label = { Text("Full Name") },
+                            singleLine = true
+                        )
+                    } else {
+                        Text(fullName.ifBlank { "No Name" }, style = MaterialTheme.typography.titleMedium)
+                        Text("Full name", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(email, style = MaterialTheme.typography.bodySmall)
+                    Text("Email", style = MaterialTheme.typography.labelSmall)
+                }
             }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(inner)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val avatarModifier = Modifier
-                        .size(84.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .let { base ->
-                            if (isEditing) {
-                                base.clickable {
-                                    // Launch with MIME array for OpenDocument
-                                    pickImage.launch(arrayOf("image/*"))
-                                }
-                            } else base
-                        }
 
-                    Box(
-                        modifier = avatarModifier,
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (avatarUri != null) {
-                            Image(
-                                painter = rememberAsyncImagePainter(avatarUri),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Text(
-                                if (isEditing) "Add\nPhoto" else "No\nPhoto",
-                                style = MaterialTheme.typography.labelMedium
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.width(16.dp))
-
-                    Column(Modifier.weight(1f)) {
-                        if (isEditing) {
-                            OutlinedTextField(
-                                value = fullName,
-                                onValueChange = { fullName = it; savedOnce = false },
-                                label = { Text("Full name *") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        } else {
-                            Text(
-                                fullName.ifBlank { "—" },
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text("Full name", style = MaterialTheme.typography.labelSmall)
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Text(userEmail, style = MaterialTheme.typography.bodySmall)
-                        Text("Email", style = MaterialTheme.typography.labelSmall)
-                    }
+            // ---------------------------
+            // PHONE NUMBER
+            // ---------------------------
+            if (isEditing) {
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = {
+                        phone = it
+                        savedStatus = false
+                    },
+                    label = { Text("Contact Number") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                Column {
+                    Text(phone.ifBlank { "—" }, style = MaterialTheme.typography.bodyLarge)
+                    Text("Contact number", style = MaterialTheme.typography.labelSmall)
                 }
+            }
 
-                if (isEditing) {
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it; savedOnce = false },
-                        label = { Text("Contact number") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    Column {
-                        Text(phone.ifBlank { "—" }, style = MaterialTheme.typography.bodyLarge)
-                        Text("Contact number", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-
-                if (error != null) {
-                    Text(
-                        error!!,
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                if (savedOnce && !isEditing) {
-                    Text("Saved ✓", color = MaterialTheme.colorScheme.primary)
-                }
+            // ---------------------------
+            // SAVED STATUS
+            // ---------------------------
+            if (savedStatus && !isEditing) {
+                Text("Saved ✓", color = MaterialTheme.colorScheme.primary)
             }
         }
     }
